@@ -291,8 +291,16 @@
     .notice-tools{flex-direction:row;gap:4px}
     .notice-tools .btn{padding:4px 8px;font-size:11px}
 
+    /* 화면 아래까지 카드가 채우도록 세로로 늘린다 */
+    .wrap{min-height:100vh;min-height:100dvh;display:flex;flex-direction:column}
+    #panelToday.on{display:flex;flex-direction:column;flex:1;min-height:0}
+    #panelToday .cards{flex:1;grid-template-rows:1fr 1fr}
+
     .cards{grid-template-columns:1fr 1fr;gap:9px}
-    .card{padding:11px 10px}
+    .card{padding:12px 11px;display:flex;flex-direction:column}
+    /* 남는 세로 공간을 시간 박스가 흡수해 숫자가 크고 시원하게 보이도록 */
+    .times{flex:1}
+    .time-box{display:flex;flex-direction:column;justify-content:center}
     .card::before{width:3px}
     .card h3{font-size:14px;gap:5px;margin-bottom:1px}
     .dot{width:7px;height:7px}
@@ -300,13 +308,13 @@
     .mood-em{font-size:15px;padding:2px 3px}
     .status{font-size:10.5px;margin-bottom:8px}
     .times{gap:6px}
-    .time-box{padding:6px 7px;border-radius:9px}
-    .time-box small{font-size:9.5px;margin-bottom:1px}
-    .time-box b{font-size:15px}
-    .time-box b.none{font-size:14px}
+    .time-box{padding:8px 7px;border-radius:10px}
+    .time-box small{font-size:10.5px;margin-bottom:3px}
+    .time-box b{font-size:21px;letter-spacing:-.8px}
+    .time-box b.none{font-size:18px}
     .card-badges{margin-top:8px;padding-top:8px;gap:3px}
     .chip{font-size:9.5px;padding:1px 4px}
-    .say{margin-top:8px;gap:4px}
+    .say{margin-top:8px;gap:4px;flex:none}
     .say-icon{font-size:11px}
     .say-input{font-size:11px;padding:5px 7px;border-radius:8px}
     th:first-child,td:first-child{width:46px;font-size:12px}
@@ -321,6 +329,22 @@
     .cell{min-height:66px;padding:3px}
     .cell .chip{font-size:10px;padding:1px 3px}
     .hol{display:none}
+  }
+
+  /* 세로가 짧은 휴대폰 — 네 카드가 넘치지 않도록 한 단계 더 줄인다 */
+  @media (max-width:560px) and (max-height:670px){
+    .wrap{padding-bottom:16px}
+    header{margin-bottom:9px}
+    .notice{padding:7px 10px;margin-bottom:9px}
+    .notice-text{font-size:12px}
+    .card{padding:10px 9px}
+    .status{font-size:10px;margin-bottom:6px}
+    .time-box{padding:6px}
+    .time-box small{font-size:10px;margin-bottom:2px}
+    .time-box b{font-size:18px}
+    .card-badges{margin-top:6px;padding-top:6px}
+    .say{margin-top:6px}
+    .say-input{padding:4px 7px}
   }
 </style>
 </head>
