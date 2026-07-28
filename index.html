@@ -140,17 +140,23 @@ window.LOCK = (function(){
   .empty{color:var(--muted);font-size:14px;padding:8px 0}
 
   /* ---- 공지사항 ---- */
-  .notice{display:flex;align-items:flex-start;gap:10px;background:#fffbeb;border:1px solid #fde68a;
-    border-radius:14px;padding:12px 14px;margin-bottom:18px}
+  .notice{display:flex;align-items:center;gap:10px;background:#fffbeb;border:1px solid #fde68a;
+    border-radius:14px;padding:11px 14px;margin-bottom:18px}
   @media (prefers-color-scheme: dark){
     .notice{background:#2a2418;border-color:#5c4a1a}
   }
   :root[data-theme="dark"] .notice{background:#2a2418;border-color:#5c4a1a}
   :root[data-theme="light"] .notice{background:#fffbeb;border-color:#fde68a}
-  .notice-icon{font-size:15px;line-height:1.5;flex:none}
-  .notice-text{flex:1;font-size:13.5px;line-height:1.6;white-space:pre-wrap;word-break:break-word;
-    min-width:0;cursor:text}
-  .notice-text.blank{color:var(--muted);font-style:italic}
+  .notice-body{flex:1;min-width:0;cursor:text}
+  .notice-title{
+    display:block;font-size:11px;font-weight:800;letter-spacing:.6px;color:#b45309;
+    margin-bottom:4px;text-transform:none;
+  }
+  @media (prefers-color-scheme: dark){ .notice-title{color:#fbbf24} }
+  :root[data-theme="dark"] .notice-title{color:#fbbf24}
+  :root[data-theme="light"] .notice-title{color:#b45309}
+  .notice-text{font-size:13.5px;line-height:1.6;white-space:pre-wrap;word-break:break-word}
+  .notice-text.blank{color:var(--muted)}
   .notice textarea{
     flex:1;font:inherit;font-size:13.5px;line-height:1.6;padding:9px 10px;border-radius:9px;
     border:1px solid var(--line);background:var(--card);color:var(--text);resize:vertical;
@@ -160,14 +166,30 @@ window.LOCK = (function(){
   .notice-tools{display:flex;flex-direction:column;gap:5px;flex:none}
   .notice-tools .btn{padding:5px 10px;font-size:12px}
 
-  /* ---- 기분 (카드 이름 옆) ---- */
-  .mood-pick{display:flex;gap:1px;margin-bottom:11px}
-  .mood-em{
-    border:0;background:transparent;font-size:16px;line-height:1;padding:3px 4px;border-radius:8px;
-    cursor:pointer;opacity:.32;filter:grayscale(1);transition:.15s;
+  /* ---- 기분 (버튼 → 팝업) ---- */
+  .mood-pick{margin-bottom:11px}
+  .mood-btn{
+    display:flex;align-items:center;justify-content:center;gap:6px;width:100%;
+    border:1px solid var(--line);background:var(--bg);color:var(--muted);font:inherit;
+    font-size:12.5px;font-weight:600;padding:7px 10px;border-radius:20px;cursor:pointer;
+    transition:.15s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   }
-  .mood-em:hover{opacity:.9;filter:none;transform:scale(1.18)}
-  .mood-em.on{opacity:1;filter:none;background:var(--mb)}
+  .mood-btn:hover{border-color:var(--muted);color:var(--text)}
+  .mood-btn .em{font-size:15px;line-height:1;flex:none}
+  .mood-btn.on{background:var(--mb);border-color:transparent;color:var(--mf);font-weight:700}
+
+  #moodDlg{max-width:340px;width:calc(100vw - 36px)}
+  #moodDlg h3{margin:0;font-size:17px}
+  .mood-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:14px 0 4px}
+  .mood-opt{
+    display:flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--bg);
+    color:var(--text);font:inherit;font-size:13px;font-weight:600;padding:11px 10px;
+    border-radius:12px;cursor:pointer;transition:.15s;
+  }
+  .mood-opt:hover{border-color:var(--muted)}
+  .mood-opt .em{font-size:20px;line-height:1;flex:none}
+  .mood-opt.on{background:var(--mb);color:var(--mf);border-color:transparent;font-weight:800}
+  .mood-opt:last-child{grid-column:1/-1;justify-content:center}
 
   /* ---- 주간 ---- */
   .member-block{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
@@ -371,16 +393,18 @@ window.LOCK = (function(){
     .card h3{font-size:13.5px;gap:5px}
     .dot{width:7px;height:7px}
     .status{font-size:10px}
-    .mood-pick{gap:0;width:100%;justify-content:space-between;margin-bottom:6px}
-    .mood-em{font-size:14px;padding:1px 2px}
-    /* 남는 세로 공간은 시간 박스가 흡수한다 */
-    .times{gap:5px;flex:1}
-    .time-box{padding:5px;border-radius:9px;display:flex;flex-direction:column;justify-content:center}
+    .mood-pick{margin-bottom:6px}
+    .mood-btn{font-size:11.5px;padding:5px 8px;gap:5px}
+    .mood-btn .em{font-size:14px}
+    /* 시간 칸은 PC 처럼 낮게, 글자는 가운데로 */
+    .times{gap:5px;flex:none}
+    .time-box{padding:5px 4px;border-radius:9px;text-align:center}
     .time-box small{font-size:9.5px;margin-bottom:1px}
-    .time-edit{font-size:18px;letter-spacing:-.7px}
+    .time-edit{font-size:18px;letter-spacing:-.7px;text-align:center}
     .card-badges{margin-top:5px;padding-top:5px;gap:3px}
     .card-badges .chip{font-size:9.5px;padding:1px 4px}
-    .say{margin-top:5px;gap:4px;flex:none}
+    /* 남는 공간은 아래로 몰아 입력칸을 카드 바닥에 붙인다 */
+    .say{margin-top:auto;padding-top:6px;gap:4px;flex:none}
     .say-icon{font-size:10px}
     .say-input{font-size:11px;padding:4px 6px;border-radius:8px}
     th:first-child,td:first-child{width:46px;font-size:12px}
@@ -405,22 +429,23 @@ window.LOCK = (function(){
     h1{font-size:16px}
     .today-label{font-size:10.5px}
     .tabs button{padding:6px 9px;font-size:12px}
-    .notice{padding:9px 11px;margin-bottom:8px}
-    .notice-text{font-size:13px;line-height:1.45}
+    .notice{padding:7px 10px;margin-bottom:7px}
+    .notice-title{font-size:10px;margin-bottom:2px;letter-spacing:.4px}
+    .notice-text{font-size:13px;line-height:1.4}
 
     .cards{gap:7px}
-    .card{padding:8px}
+    .card{padding:7px}
     .card-head{margin-bottom:3px}
     .card h3{font-size:13px}
     .status{font-size:9.5px}
-    .mood-pick{margin-bottom:5px}
-    .mood-em{font-size:13px}
+    .mood-pick{margin-bottom:4px}
+    .mood-btn{font-size:11px;padding:3px 7px}
     .times{gap:4px}
-    .time-box{padding:4px}
+    .time-box{padding:3px}
     .time-box small{font-size:9px}
     .time-edit{font-size:16px}
     .card-badges{margin-top:4px;padding-top:4px}
-    .say{margin-top:4px}
+    .say{padding-top:4px}
     .say-input{font-size:10.5px;padding:3px 6px}
   }
 </style>
@@ -512,6 +537,16 @@ window.LOCK = (function(){
   </section>
 
 </div>
+
+<dialog id="moodDlg">
+  <h3 id="moodDlgTitle"></h3>
+  <div class="dlg-sub">오늘 기분을 골라주세요</div>
+  <div class="mood-grid" id="moodDlgList"></div>
+  <div class="row">
+    <button class="btn" id="moodClear" onclick="clearMood()">선택 지우기</button>
+    <button class="btn" onclick="document.getElementById('moodDlg').close()">닫기</button>
+  </div>
+</dialog>
 
 <dialog id="dayDlg">
   <h3 id="dayTitle"></h3>
@@ -928,11 +963,14 @@ function renderToday(){
     ].filter(Boolean).join('');
     const status = statusOf(m, s, now);
 
-    /* 이름 옆 기분 선택기 — 누르면 선택, 같은 것을 다시 누르면 해제 */
-    const moodPick = MOODS.map(md =>
-      `<button type="button" class="mood-em ${todayMoods[m.key] === md.key ? 'on' : ''}"
-         style="--mb:${md.bg}" title="${md.name}"
-         onclick="setMood('${m.key}','${md.key}')">${md.emoji}</button>`).join('');
+    /* 기분은 버튼을 눌러 팝업에서 고른다 */
+    const mood = moodOf(todayMoods[m.key]);
+    const moodPick = `
+      <button type="button" class="mood-btn ${mood ? 'on' : ''}"
+        ${mood ? `style="--mb:${mood.bg};--mf:${mood.fg}"` : ''}
+        onclick="openMood('${m.key}')">
+        <span class="em">${mood ? mood.emoji : '🙂'}</span>${mood ? mood.name : '오늘의 기분'}
+      </button>`;
 
     return `
       <div class="card" style="--c:${m.color}">
@@ -977,9 +1015,11 @@ function renderNotice(){
   const box = document.getElementById('notice');
   if (noticeEditing){
     box.innerHTML = `
-      <span class="notice-icon">📌</span>
-      <textarea id="noticeInput" maxlength="500"
-        placeholder="가족에게 알릴 내용을 적어주세요&#10;예) 토요일 저녁 7시 외식 / 준이 준비물 챙기기"></textarea>
+      <div class="notice-body">
+        <span class="notice-title">오늘의 공지사항</span>
+        <textarea id="noticeInput" maxlength="500"
+          placeholder="가족에게 알릴 내용을 적어주세요&#10;예) 토요일 저녁 7시 외식 / 준이 준비물 챙기기"></textarea>
+      </div>
       <div class="notice-tools">
         <button class="btn primary" onclick="saveNoticeEdit()">저장</button>
         <button class="btn" onclick="cancelNoticeEdit()">취소</button>
@@ -990,9 +1030,11 @@ function renderNotice(){
     ta.setSelectionRange(ta.value.length, ta.value.length);
   } else {
     box.innerHTML = `
-      <span class="notice-icon">📌</span>
-      <div class="notice-text ${notice ? '' : 'blank'}" onclick="startNoticeEdit()"
-        >${notice ? esc(notice) : '공지사항이 없습니다. 눌러서 입력하세요.'}</div>
+      <div class="notice-body" onclick="startNoticeEdit()">
+        <span class="notice-title">오늘의 공지사항</span>
+        <div class="notice-text ${notice ? '' : 'blank'}"
+          >${notice ? esc(notice) : '눌러서 입력하세요'}</div>
+      </div>
       <div class="notice-tools">
         <button class="btn" onclick="startNoticeEdit()">${notice ? '수정' : '입력'}</button>
         ${notice ? `<button class="btn" onclick="clearNotice()">지우기</button>` : ''}
@@ -1020,6 +1062,33 @@ function setSay(mKey, value){
   if (text) day[mKey] = text; else delete day[mKey];
   if (!Object.keys(day).length) delete says[key];
   saveSays();
+}
+
+/* ---------- 기분 고르기 팝업 ---------- */
+let moodTarget = null;
+
+function openMood(mKey){
+  moodTarget = mKey;
+  const m = memberOf(mKey);
+  const cur = (moods[ymdOf(new Date())] || {})[mKey];
+  document.getElementById('moodDlgTitle').textContent = `${m.name}의 오늘 기분`;
+  document.getElementById('moodDlgList').innerHTML = MOODS.map(md => `
+    <button type="button" class="mood-opt ${cur === md.key ? 'on' : ''}"
+      style="--mb:${md.bg};--mf:${md.fg}" onclick="pickMood('${md.key}')">
+      <span class="em">${md.emoji}</span>${md.name}
+    </button>`).join('');
+  document.getElementById('moodClear').style.display = cur ? '' : 'none';
+  document.getElementById('moodDlg').showModal();
+}
+function pickMood(moodKey){
+  const cur = (moods[ymdOf(new Date())] || {})[moodTarget];
+  if (cur !== moodKey) setMood(moodTarget, moodKey);   // 같은 것을 고르면 그대로 둔다
+  document.getElementById('moodDlg').close();
+}
+function clearMood(){
+  const cur = (moods[ymdOf(new Date())] || {})[moodTarget];
+  if (cur) setMood(moodTarget, cur);                   // 토글이라 같은 값을 주면 지워진다
+  document.getElementById('moodDlg').close();
 }
 
 /* 같은 기분을 다시 누르면 선택 해제된다 */
@@ -1435,7 +1504,39 @@ function askReset(){
 }
 
 /* ---------- 탭 ---------- */
+const TAB_ORDER = ['today', 'month', 'money', 'week'];
+let curTab = 'today';
+
+/* 좌우로 밀어 탭을 넘긴다.
+   주간 설정 표처럼 가로로 스크롤되는 곳이나 입력칸에서 시작한 동작은 건드리지 않는다. */
+(function setupSwipe(){
+  let x0 = 0, y0 = 0, live = false;
+  const IGNORE = '.table-scroll, input, textarea, select, button, dialog, .acad-wrap';
+
+  document.addEventListener('touchstart', e => {
+    live = false;
+    if (e.touches.length !== 1) return;
+    if (document.documentElement.classList.contains('locked')) return;
+    if (e.target.closest && e.target.closest(IGNORE)) return;
+    x0 = e.touches[0].clientX;
+    y0 = e.touches[0].clientY;
+    live = true;
+  }, { passive: true });
+
+  document.addEventListener('touchend', e => {
+    if (!live) return;
+    live = false;
+    const dx = e.changedTouches[0].clientX - x0;
+    const dy = e.changedTouches[0].clientY - y0;
+    if (Math.abs(dx) < 60) return;                 // 너무 짧으면 무시
+    if (Math.abs(dx) < Math.abs(dy) * 1.4) return; // 세로 스크롤이면 무시
+    const i = TAB_ORDER.indexOf(curTab) + (dx < 0 ? 1 : -1);
+    if (i >= 0 && i < TAB_ORDER.length) showTab(TAB_ORDER[i]);
+  }, { passive: true });
+})();
+
 function showTab(which){
+  curTab = which;
   for (const t of ['today','month','money','week']){
     const on = t === which;
     document.getElementById('panel' + t[0].toUpperCase() + t.slice(1)).classList.toggle('on', on);
