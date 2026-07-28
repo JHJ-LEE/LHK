@@ -87,10 +87,11 @@ window.LOCK = (function(){
 
   header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px;flex-wrap:wrap}
   h1{font-size:22px;margin:0;letter-spacing:-.4px}
-  .today-label{font-size:13px;color:var(--muted);margin-top:3px}
+  .head-sub{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:3px}
+  .today-label{font-size:13px;color:var(--muted)}
 
-  .sync{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);
-    margin-left:auto;white-space:nowrap;cursor:default}
+  .sync{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--muted);
+    white-space:nowrap;cursor:default}
   .sync i{width:8px;height:8px;border-radius:50%;flex:none}
 
   .tabs{display:flex;gap:4px;background:var(--card);padding:4px;border-radius:12px;border:1px solid var(--line)}
@@ -161,6 +162,29 @@ window.LOCK = (function(){
 
   .empty{color:var(--muted);font-size:14px;padding:8px 0}
 
+  /* ---- 오늘의 한자 · 영어 ---- */
+  .words{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;flex:none}
+  .word-box{background:var(--card);border:1px solid var(--line);border-radius:14px;
+    padding:10px 12px;box-shadow:var(--shadow);min-width:0}
+  .word-label{display:block;font-size:10.5px;font-weight:800;letter-spacing:.4px;
+    color:var(--muted);margin-bottom:6px}
+  .word-main{display:flex;align-items:center;gap:10px;min-width:0}
+  .hanja-char{font-size:34px;font-weight:700;line-height:1;flex:none;
+    font-family:"Malgun Gothic","Apple SD Gothic Neo",serif}
+  .hanja-info,.eng-info{display:flex;flex-direction:column;gap:2px;min-width:0}
+  .hanja-info b,.eng-info b{font-size:15px;font-weight:700;white-space:nowrap;
+    overflow:hidden;text-overflow:ellipsis}
+  .eng-info b{font-size:19px;letter-spacing:-.3px}
+  .hanja-info small,.eng-info small{font-size:12px;color:var(--muted);
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .eng-info{flex:1}
+  .speak{
+    flex:none;width:38px;height:38px;border-radius:50%;border:1px solid var(--line);
+    background:var(--bg);font-size:17px;cursor:pointer;transition:.15s;
+  }
+  .speak:hover{border-color:var(--accent)}
+  .speak.on{background:var(--accent);border-color:var(--accent);transform:scale(1.08)}
+
   /* ---- 공지사항 ---- */
   .notice{display:flex;align-items:center;gap:10px;background:#fffbeb;border:1px solid #fde68a;
     border-radius:14px;padding:11px 14px;margin-bottom:18px}
@@ -189,9 +213,9 @@ window.LOCK = (function(){
   .notice-tools .btn{padding:5px 10px;font-size:12px}
 
   /* ---- 기분 (버튼 → 팝업) ---- */
-  .mood-pick{margin-bottom:11px}
+  .mood-pick{display:flex;margin-left:auto;flex:none}
   .mood-btn{
-    display:flex;align-items:center;justify-content:center;gap:6px;width:100%;
+    display:flex;align-items:center;justify-content:center;gap:6px;
     border:1px solid var(--line);background:var(--bg);color:var(--muted);font:inherit;
     font-size:12.5px;font-weight:600;padding:7px 10px;border-radius:20px;cursor:pointer;
     transition:.15s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
@@ -389,7 +413,8 @@ window.LOCK = (function(){
     header{margin-bottom:12px;gap:8px}
     h1{font-size:17px}
     .today-label{font-size:11px}
-    .sync{font-size:11px;order:3;width:100%;margin-left:0;justify-content:flex-end}
+    .head-sub{gap:7px;margin-top:1px}
+    .sync{font-size:10.5px}
     .tabs button{padding:7px 10px;font-size:12.5px}
 
     /* 공지는 잘 보이게 키우고, 대신 카드를 촘촘하게 */
@@ -409,16 +434,28 @@ window.LOCK = (function(){
     #panelToday .cards{flex:1;grid-template-rows:minmax(0,1fr) minmax(0,1fr);min-height:0}
 
     .cards{grid-template-columns:1fr 1fr;gap:8px}
-    .card{padding:9px 9px;display:flex;flex-direction:column}
+    .card{padding:8px;display:flex;flex-direction:column}
     .card::before{width:3px}
-    /* 이름과 상태를 한 줄에 두어 한 줄을 아낀다 */
-    .card-head{gap:6px;margin-bottom:4px}
+    /* 이름·상태·기분을 한 줄에 모아 두 줄을 아낀다 */
+    .card-head{gap:5px;margin-bottom:5px}
     .card h3{font-size:13.5px;gap:5px}
     .dot{width:7px;height:7px}
     .status{font-size:10px}
-    .mood-pick{margin-bottom:6px}
-    .mood-btn{font-size:11.5px;padding:5px 8px;gap:5px}
-    .mood-btn .em{font-size:14px}
+    /* 좁은 화면에서는 글자를 빼고 이모티콘만 (누르면 팝업은 그대로) */
+    .mood-btn{padding:3px 6px;border-radius:14px;font-size:0;gap:0}
+    .mood-btn .em{font-size:16px}
+
+    /* 한자·영어 칸은 뜻과 예시를 한 줄에 붙여 낮게 만든다 */
+    .words{gap:7px;margin-top:7px}
+    .word-box{padding:6px 8px;border-radius:11px}
+    .word-label{font-size:9.5px;margin-bottom:3px}
+    .word-main{gap:7px}
+    .hanja-char{font-size:24px}
+    .hanja-info,.eng-info{flex-direction:row;align-items:baseline;gap:5px}
+    .hanja-info b{font-size:12px}
+    .eng-info b{font-size:14px}
+    .hanja-info small,.eng-info small{font-size:10px}
+    .speak{width:28px;height:28px;font-size:14px}
     /* 시간 칸은 PC 처럼 낮게, 글자는 가운데로 */
     .times{gap:5px;flex:none}
     .time-box{padding:5px 4px;border-radius:9px;text-align:center}
@@ -461,15 +498,18 @@ window.LOCK = (function(){
     .card-head{margin-bottom:3px}
     .card h3{font-size:13px}
     .status{font-size:9.5px}
-    .mood-pick{margin-bottom:4px}
-    .mood-btn{font-size:11px;padding:3px 7px}
+    .mood-btn{padding:2px 5px}
+    .mood-btn .em{font-size:15px}
     .times{gap:4px}
-    .time-box{padding:3px}
-    .time-box small{font-size:9px}
-    .time-edit{font-size:16px}
-    .card-badges{margin-top:4px;padding-top:4px}
-    .say{padding-top:4px}
-    .say-input{font-size:10.5px;padding:3px 6px}
+    .time-box{padding:2px 3px}
+    .time-box small{font-size:8.5px;margin-bottom:0}
+    .time-edit{font-size:15px}
+    .card-badges{margin-top:3px;padding-top:3px}
+    .card-badges .chip{font-size:9px;padding:0 3px}
+    .say{padding-top:3px}
+    .say-input{font-size:10px;padding:2px 5px}
+    .word-box{padding:5px 7px}
+    .hanja-char{font-size:21px}
   }
 </style>
 </head>
@@ -488,9 +528,11 @@ window.LOCK = (function(){
   <header>
     <div>
       <h1>👨‍👩‍👦‍👦 준&amp;하진이네 가족어플</h1>
-      <div class="today-label" id="todayLabel"></div>
+      <div class="head-sub">
+        <span class="today-label" id="todayLabel"></span>
+        <span class="sync" id="syncBadge" title="동기화 상태"></span>
+      </div>
     </div>
-    <span class="sync" id="syncBadge" title="동기화 상태"></span>
     <nav class="tabs">
       <button id="tabToday" class="on" onclick="showTab('today')">오늘</button>
       <button id="tabMonth" onclick="showTab('month')">월간</button>
@@ -505,6 +547,7 @@ window.LOCK = (function(){
 
   <section id="panelToday" class="panel on">
     <div class="cards" id="todayCards"></div>
+    <div class="words" id="words"></div>
   </section>
 
   <section id="panelMonth" class="panel">
@@ -625,6 +668,56 @@ const MEMBERS = [
   { key:'jun',   name:'준',    color:'var(--jun)',   goLabel:'등교', backLabel:'귀가', role:'kid' },
   { key:'hajin', name:'하진',  color:'var(--hajin)', goLabel:'등교', backLabel:'귀가', role:'kid' },
 ];
+/* 오늘의 한자 (한국어문회 6급) — c:한자, m:훈, s:음, w:한자어, wm:뜻 */
+const HANJA = [
+  {c:'各',m:'각각',s:'각',w:'各自',wm:'각자'}, {c:'角',m:'뿔',s:'각',w:'三角',wm:'삼각'},
+  {c:'感',m:'느낄',s:'감',w:'感動',wm:'감동'}, {c:'強',m:'강할',s:'강',w:'強國',wm:'강국'},
+  {c:'開',m:'열',s:'개',w:'開放',wm:'개방'},   {c:'京',m:'서울',s:'경',w:'上京',wm:'상경'},
+  {c:'界',m:'지경',s:'계',w:'世界',wm:'세계'}, {c:'計',m:'셀',s:'계',w:'計算',wm:'계산'},
+  {c:'高',m:'높을',s:'고',w:'高等',wm:'고등'}, {c:'苦',m:'쓸',s:'고',w:'苦生',wm:'고생'},
+  {c:'古',m:'예',s:'고',w:'古代',wm:'고대'},   {c:'功',m:'공',s:'공',w:'成功',wm:'성공'},
+  {c:'公',m:'공평할',s:'공',w:'公平',wm:'공평'},{c:'共',m:'한가지',s:'공',w:'共同',wm:'공동'},
+  {c:'科',m:'과목',s:'과',w:'科目',wm:'과목'}, {c:'果',m:'실과',s:'과',w:'果實',wm:'과실'},
+  {c:'光',m:'빛',s:'광',w:'光線',wm:'광선'},   {c:'交',m:'사귈',s:'교',w:'交通',wm:'교통'},
+  {c:'區',m:'구분할',s:'구',w:'區分',wm:'구분'},{c:'球',m:'공',s:'구',w:'地球',wm:'지구'},
+  {c:'郡',m:'고을',s:'군',w:'郡民',wm:'군민'}, {c:'近',m:'가까울',s:'근',w:'近方',wm:'근방'},
+  {c:'根',m:'뿌리',s:'근',w:'根本',wm:'근본'}, {c:'今',m:'이제',s:'금',w:'今年',wm:'금년'},
+  {c:'急',m:'급할',s:'급',w:'急行',wm:'급행'}, {c:'級',m:'등급',s:'급',w:'等級',wm:'등급'},
+  {c:'多',m:'많을',s:'다',w:'多數',wm:'다수'}, {c:'短',m:'짧을',s:'단',w:'長短',wm:'장단'},
+  {c:'堂',m:'집',s:'당',w:'食堂',wm:'식당'},   {c:'代',m:'대신할',s:'대',w:'代表',wm:'대표'},
+  {c:'對',m:'대할',s:'대',w:'對話',wm:'대화'}, {c:'待',m:'기다릴',s:'대',w:'期待',wm:'기대'},
+  {c:'圖',m:'그림',s:'도',w:'圖書',wm:'도서'}, {c:'度',m:'법도',s:'도',w:'溫度',wm:'온도'},
+  {c:'讀',m:'읽을',s:'독',w:'讀書',wm:'독서'}, {c:'童',m:'아이',s:'동',w:'童話',wm:'동화'},
+  {c:'頭',m:'머리',s:'두',w:'先頭',wm:'선두'}, {c:'等',m:'무리',s:'등',w:'平等',wm:'평등'},
+  {c:'樂',m:'즐길',s:'락',w:'音樂',wm:'음악'}, {c:'例',m:'법식',s:'례',w:'例文',wm:'예문'},
+  {c:'禮',m:'예도',s:'례',w:'禮節',wm:'예절'}, {c:'路',m:'길',s:'로',w:'道路',wm:'도로'},
+  {c:'綠',m:'푸를',s:'록',w:'綠色',wm:'녹색'}, {c:'理',m:'다스릴',s:'리',w:'理由',wm:'이유'},
+  {c:'利',m:'이할',s:'리',w:'利用',wm:'이용'}, {c:'明',m:'밝을',s:'명',w:'分明',wm:'분명'},
+  {c:'目',m:'눈',s:'목',w:'目的',wm:'목적'},   {c:'聞',m:'들을',s:'문',w:'新聞',wm:'신문'},
+  {c:'米',m:'쌀',s:'미',w:'白米',wm:'백미'},   {c:'美',m:'아름다울',s:'미',w:'美術',wm:'미술'},
+];
+
+/* 오늘의 영어 (중학교 1학년 수준) */
+const ENGLISH = [
+  {w:'ability',m:'능력'},        {w:'across',m:'가로질러'},   {w:'advice',m:'조언'},
+  {w:'agree',m:'동의하다'},      {w:'already',m:'이미'},      {w:'always',m:'항상'},
+  {w:'angry',m:'화난'},          {w:'answer',m:'대답하다'},   {w:'arrive',m:'도착하다'},
+  {w:'become',m:'~이 되다'},     {w:'believe',m:'믿다'},      {w:'borrow',m:'빌리다'},
+  {w:'bring',m:'가져오다'},      {w:'build',m:'짓다'},        {w:'busy',m:'바쁜'},
+  {w:'careful',m:'조심하는'},    {w:'change',m:'바꾸다'},     {w:'choose',m:'고르다'},
+  {w:'clean',m:'깨끗한'},        {w:'climb',m:'오르다'},      {w:'collect',m:'모으다'},
+  {w:'culture',m:'문화'},        {w:'decide',m:'결정하다'},   {w:'delicious',m:'맛있는'},
+  {w:'different',m:'다른'},      {w:'difficult',m:'어려운'},  {w:'enjoy',m:'즐기다'},
+  {w:'enough',m:'충분한'},       {w:'exercise',m:'운동'},     {w:'famous',m:'유명한'},
+  {w:'favorite',m:'가장 좋아하는'},{w:'finish',m:'끝내다'},   {w:'forget',m:'잊다'},
+  {w:'future',m:'미래'},         {w:'health',m:'건강'},       {w:'holiday',m:'휴일'},
+  {w:'hungry',m:'배고픈'},       {w:'important',m:'중요한'},  {w:'interesting',m:'흥미로운'},
+  {w:'invite',m:'초대하다'},     {w:'kitchen',m:'부엌'},      {w:'language',m:'언어'},
+  {w:'library',m:'도서관'},      {w:'listen',m:'듣다'},       {w:'machine',m:'기계'},
+  {w:'medicine',m:'약'},         {w:'mistake',m:'실수'},      {w:'nature',m:'자연'},
+  {w:'neighbor',m:'이웃'},       {w:'order',m:'주문하다'},
+];
+
 /* 오늘의 기분 */
 const MOODS = [
   { key:'good',  emoji:'😄', name:'컨디션 굿',   bg:'#dcfce7', fg:'#15803d' },
@@ -1003,8 +1096,8 @@ function renderToday(){
         <div class="card-head">
           <h3><span class="dot"></span>${m.name}</h3>
           <span class="status">${status}</span>
+          <div class="mood-pick">${moodPick}</div>
         </div>
-        <div class="mood-pick">${moodPick}</div>
         <div class="times">
           <label class="time-box">
             <small>${m.goLabel}</small>
@@ -1032,6 +1125,63 @@ function renderToday(){
       </div>`;
   }).join('');
   document.getElementById('todayCards').innerHTML = cards;
+  renderWords(dateKey);
+}
+
+/* 날짜를 기준으로 고르므로 온 가족이 같은 단어를 보고, 매일 바뀐다 */
+function wordOfDay(list, dateKey, shift){
+  const days = Math.floor(Date.parse(dateKey + 'T00:00:00Z') / 86400000);
+  return list[((days + shift) % list.length + list.length) % list.length];
+}
+
+function renderWords(dateKey){
+  const h = wordOfDay(HANJA, dateKey, 0);
+  const e = wordOfDay(ENGLISH, dateKey, 0);
+  document.getElementById('words').innerHTML = `
+    <div class="word-box">
+      <span class="word-label">오늘의 한자 · 6급</span>
+      <div class="word-main">
+        <span class="hanja-char">${h.c}</span>
+        <span class="hanja-info">
+          <b>${h.m} ${h.s}</b>
+          <small>${h.w} · ${h.wm}</small>
+        </span>
+      </div>
+    </div>
+    <div class="word-box">
+      <span class="word-label">오늘의 영어 · 중1</span>
+      <div class="word-main">
+        <span class="eng-info">
+          <b>${e.w}</b>
+          <small>${e.m}</small>
+        </span>
+        <button type="button" class="speak" title="발음 듣기"
+          onclick="speak('${e.w}', this)">🔊</button>
+      </div>
+    </div>`;
+}
+
+/* 발음 듣기 — 기기에 내장된 목소리를 쓴다 */
+function speak(word, btn){
+  if (!('speechSynthesis' in window)){
+    alert('이 브라우저에서는 발음 듣기를 지원하지 않아요.');
+    return;
+  }
+  try{
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(word);
+    u.lang = 'en-US';
+    u.rate = 0.85;
+    if (btn){
+      btn.classList.add('on');
+      const off = () => btn.classList.remove('on');
+      u.onend = off; u.onerror = off;
+      setTimeout(off, 4000);          // 목소리가 없어 조용히 끝나는 경우 대비
+    }
+    speechSynthesis.speak(u);
+  }catch(err){
+    alert('발음을 재생할 수 없습니다.');
+  }
 }
 
 /* ---------- 공지사항 ---------- */
