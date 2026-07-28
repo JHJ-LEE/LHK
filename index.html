@@ -69,6 +69,15 @@
   .time-box b.none{color:var(--muted);font-weight:500;font-size:16px}
   .card-badges{display:flex;gap:5px;flex-wrap:wrap;margin-top:10px;padding-top:10px;
     border-top:1px dashed var(--line)}
+  .say{display:flex;align-items:center;gap:6px;margin-top:10px;padding:0 2px}
+  .say-icon{font-size:13px;line-height:1;flex:none;opacity:.7}
+  .say-input{
+    flex:1;min-width:0;font:inherit;font-size:12.5px;padding:7px 9px;border-radius:9px;
+    border:1px solid var(--line);background:var(--bg);color:var(--text);
+  }
+  .say-input::placeholder{color:var(--muted);opacity:.75}
+  .say-input:focus{outline:2px solid var(--c);outline-offset:-1px;border-color:transparent;
+    background:var(--card)}
 
   .empty{color:var(--muted);font-size:14px;padding:8px 0}
 
@@ -269,9 +278,37 @@
   .add-form input[type=text],.add-form button{grid-column:1/-1}
 
   @media (max-width:560px){
-    h1{font-size:19px}
-    .times{gap:8px}
-    .time-box b{font-size:17px}
+    /* 스크롤 없이 네 사람이 한 화면에 들어오도록 2×2 로 배치하고 전체를 압축한다 */
+    .wrap{padding:12px 10px 24px}
+    header{margin-bottom:12px;gap:8px}
+    h1{font-size:17px}
+    .today-label{font-size:11px}
+    .sync{font-size:11px;order:3;width:100%;margin-left:0;justify-content:flex-end}
+    .tabs button{padding:7px 10px;font-size:12.5px}
+
+    .notice{padding:9px 11px;margin-bottom:11px;gap:8px;align-items:center}
+    .notice-text{font-size:12.5px;line-height:1.45}
+    .notice-tools{flex-direction:row;gap:4px}
+    .notice-tools .btn{padding:4px 8px;font-size:11px}
+
+    .cards{grid-template-columns:1fr 1fr;gap:9px}
+    .card{padding:11px 10px}
+    .card::before{width:3px}
+    .card h3{font-size:14px;gap:5px;margin-bottom:1px}
+    .dot{width:7px;height:7px}
+    .mood-pick{gap:0;margin-left:0;width:100%;justify-content:space-between}
+    .mood-em{font-size:15px;padding:2px 3px}
+    .status{font-size:10.5px;margin-bottom:8px}
+    .times{gap:6px}
+    .time-box{padding:6px 7px;border-radius:9px}
+    .time-box small{font-size:9.5px;margin-bottom:1px}
+    .time-box b{font-size:15px}
+    .time-box b.none{font-size:14px}
+    .card-badges{margin-top:8px;padding-top:8px;gap:3px}
+    .chip{font-size:9.5px;padding:1px 4px}
+    .say{margin-top:8px;gap:4px}
+    .say-icon{font-size:11px}
+    .say-input{font-size:11px;padding:5px 7px;border-radius:8px}
     th:first-child,td:first-child{width:46px;font-size:12px}
     input[type=time]{min-width:0;font-size:13px;padding:6px 2px}
     .acad-wrap{min-width:78px;gap:3px}
@@ -279,14 +316,10 @@
     .ox{font-size:12px;padding:6px 0;max-width:40px}
     th,td{padding:5px 2px}
     th{font-size:11px}
-    .mood-row{flex-direction:column;align-items:flex-start;gap:8px}
-    .mood-name{width:auto}
-    .mood-btn{font-size:11px;padding:6px 9px}
     .balance .amt{font-size:30px}
     .form-grid{grid-template-columns:1fr}
-    .tabs button{padding:8px 11px;font-size:13px}
     .cell{min-height:66px;padding:3px}
-    .chip{font-size:10px;padding:1px 3px}
+    .cell .chip{font-size:10px;padding:1px 3px}
     .hol{display:none}
   }
 </style>
@@ -485,6 +518,7 @@ const EVENTS_KEY = 'family-events-v1';
 const MONEY_KEY  = 'family-allowance-v1';
 const MOOD_KEY   = 'family-moods-v1';
 const NOTICE_KEY = 'family-notice-v1';
+const SAYS_KEY   = 'family-says-v1';
 const WEEKDAYS = ['mon','tue','wed','thu','fri'];
 
 /* 특별 일정을 온 가족에게 한 번에 적용하기 위한 가상 구성원 */
@@ -543,6 +577,7 @@ let data = load();
 let events = loadEvents();
 let money = loadMoney();
 let moods = loadMoods();
+let says = loadSays();
 let notice = loadNotice();
 
 /* events = { "2026-07-15": [ {id, member, type, memo} ] } */
@@ -613,6 +648,27 @@ function loadMoods(){
 }
 function saveMoods(){ put(MOOD_KEY, moods); pushRemote(); }
 
+/* says = { "2026-07-28": { dad: "오늘 하고싶은 말" } } — 기분과 같이 날짜별로 남는다 */
+function cleanSays(raw){
+  const out = {};
+  if (!raw || typeof raw !== 'object') return out;
+  for (const [date, byMember] of Object.entries(raw)){
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !byMember || typeof byMember !== 'object') continue;
+    const day = {};
+    for (const m of MEMBERS){
+      const t = String(byMember[m.key] ?? '').trim().slice(0, 40);
+      if (t) day[m.key] = t;
+    }
+    if (Object.keys(day).length) out[date] = day;
+  }
+  return out;
+}
+function loadSays(){
+  try{ return cleanSays(JSON.parse(localStorage.getItem(SAYS_KEY))); }
+  catch(e){ return {}; }
+}
+function saveSays(){ put(SAYS_KEY, says); pushRemote(); }
+
 function loadNotice(){
   try{ return String(localStorage.getItem(NOTICE_KEY) ?? '').slice(0, 500); }
   catch(e){ return ''; }
@@ -673,6 +729,9 @@ const ymdOf    = dt => ymd(dt.getFullYear(), dt.getMonth(), dt.getDate());
 const esc      = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 /* ---------- 오늘 화면 ---------- */
 function renderToday(){
+  /* 하고싶은 말을 입력하는 중이면 다시 그리지 않는다 (입력 내용이 지워지는 것을 막음) */
+  if (document.activeElement && document.activeElement.classList.contains('say-input')) return;
+
   const di = todayIdx(), day = DAYS[di], now = nowMin();
   const dt = new Date();
   document.getElementById('todayLabel').textContent =
@@ -680,6 +739,7 @@ function renderToday(){
   const dateKey = ymdOf(dt);
   const todayEvents = events[dateKey] || [];
   const todayMoods = moods[dateKey] || {};
+  const todaySays = says[dateKey] || {};
 
   const cards = MEMBERS.map(m => {
     const s = data[m.key][day.key];
@@ -724,6 +784,13 @@ function renderToday(){
           </div>
         </div>
         ${badges ? `<div class="card-badges">${badges}</div>` : ''}
+        <label class="say">
+          <span class="say-icon">💬</span>
+          <input type="text" class="say-input" maxlength="40"
+            value="${esc(todaySays[m.key] || '')}"
+            placeholder="오늘 하고싶은 말"
+            onchange="setSay('${m.key}', this.value)">
+        </label>
       </div>`;
   }).join('');
   document.getElementById('todayCards').innerHTML = cards;
@@ -768,6 +835,17 @@ function saveNoticeEdit(){
 function clearNotice(){
   notice = '';
   saveNotice(); renderNotice();
+}
+
+/* 저장만 하고 화면은 다시 그리지 않는다 — 입력칸이 이미 그 값을 보여주고 있고,
+   다시 그리면 바로 이어서 누른 버튼의 클릭이 사라지기 때문 */
+function setSay(mKey, value){
+  const key = ymdOf(new Date());
+  const text = String(value).trim().slice(0, 40);
+  const day = says[key] || (says[key] = {});
+  if (text) day[mKey] = text; else delete day[mKey];
+  if (!Object.keys(day).length) delete says[key];
+  saveSays();
 }
 
 /* 같은 기분을 다시 누르면 선택 해제된다 */
@@ -1098,7 +1176,7 @@ function clearMember(mKey){
 
 /* ---------- 백업 / 초기화 ---------- */
 function exportJson(){
-  const payload = { version:5, weekly:data, events, money, moods, notice };
+  const payload = { version:6, weekly:data, events, money, moods, says, notice };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type:'application/json' });
   const a = document.createElement('a');
   const d = new Date();
@@ -1151,8 +1229,9 @@ function askImport(parsed, fileName){
       events = cleanEvents(parsed?.events);
       money  = cleanMoney(parsed?.money);
       moods  = cleanMoods(parsed?.moods);
+      says   = cleanSays(parsed?.says);
       notice = String(parsed?.notice || '').slice(0, 500);
-      save(); saveEvents(); saveMoney(); saveMoods(); saveNotice();
+      save(); saveEvents(); saveMoney(); saveMoods(); saveSays(); saveNotice();
       renderWeek(); renderMonth(); renderMoney(); renderNotice(); renderToday();
       dlg.close();
     }catch(e){
@@ -1172,8 +1251,9 @@ function askReset(){
     data = seedData();
     events = {};
     moods = {};
+    says = {};
     notice = '';
-    save(); saveEvents(); saveMoods(); saveNotice();
+    save(); saveEvents(); saveMoods(); saveSays(); saveNotice();
     renderWeek(); renderMonth(); renderNotice(); renderToday();
     dlg.close();
   };
@@ -1214,7 +1294,7 @@ function setSyncStatus(state, detail){
 window.familyApp = {
   setSyncStatus,
   /* 원격으로 보낼 전체 스냅샷 */
-  snapshot: () => ({ weekly: data, events, money, moods, notice }),
+  snapshot: () => ({ weekly: data, events, money, moods, says, notice }),
   /* 원격에서 받은 내용을 로컬에 반영 (되돌려 보내지 않는다) */
   apply(remote){
     if (!remote || typeof remote !== 'object') return;
@@ -1222,6 +1302,7 @@ window.familyApp = {
     if (remote.events) { events = cleanEvents(remote.events);   put(EVENTS_KEY, events); }
     if (remote.money)  { money  = cleanMoney(remote.money);     put(MONEY_KEY,  money); }
     if (remote.moods)  { moods  = cleanMoods(remote.moods);     put(MOOD_KEY,   moods); }
+    if (remote.says)   { says   = cleanSays(remote.says);       put(SAYS_KEY,   says); }
     if (typeof remote.notice === 'string'){
       notice = remote.notice.slice(0, 500);
       try{ localStorage.setItem(NOTICE_KEY, notice); }catch(e){}
