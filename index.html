@@ -1508,16 +1508,22 @@ const TAB_ORDER = ['today', 'month', 'money', 'week'];
 let curTab = 'today';
 
 /* 좌우로 밀어 탭을 넘긴다.
-   주간 설정 표처럼 가로로 스크롤되는 곳이나 입력칸에서 시작한 동작은 건드리지 않는다. */
+   오른쪽으로 밀면 다음, 왼쪽으로 밀면 이전이고, 끝에서는 반대편으로 이어진다.
+   (주간 설정에서 오른쪽 → 오늘 / 오늘에서 왼쪽 → 주간 설정) */
 (function setupSwipe(){
-  let x0 = 0, y0 = 0, live = false;
-  const IGNORE = '.table-scroll, input, textarea, select, button, dialog, .acad-wrap';
+  let x0 = 0, y0 = 0, live = false, swiped = false;
 
   document.addEventListener('touchstart', e => {
     live = false;
     if (e.touches.length !== 1) return;
     if (document.documentElement.classList.contains('locked')) return;
-    if (e.target.closest && e.target.closest(IGNORE)) return;
+    /* 가로로 스크롤되는 표와 팝업 안에서는 넘기지 않는다.
+       버튼·입력칸은 제외하지 않는다 — 오늘 화면은 대부분이 그것들이라
+       제외하면 스와이프가 거의 먹지 않는다. */
+    if (e.target.closest && e.target.closest('.table-scroll, dialog')) return;
+    /* 다만 지금 편집 중인 칸 위에서 끄는 것은 글자 선택이므로 건드리지 않는다 */
+    const a = document.activeElement;
+    if (a === e.target && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA')) return;
     x0 = e.touches[0].clientX;
     y0 = e.touches[0].clientY;
     live = true;
@@ -1528,11 +1534,22 @@ let curTab = 'today';
     live = false;
     const dx = e.changedTouches[0].clientX - x0;
     const dy = e.changedTouches[0].clientY - y0;
-    if (Math.abs(dx) < 60) return;                 // 너무 짧으면 무시
-    if (Math.abs(dx) < Math.abs(dy) * 1.4) return; // 세로 스크롤이면 무시
-    const i = TAB_ORDER.indexOf(curTab) + (dx < 0 ? 1 : -1);
-    if (i >= 0 && i < TAB_ORDER.length) showTab(TAB_ORDER[i]);
+    if (Math.abs(dx) < 55) return;                 // 너무 짧으면 무시
+    if (Math.abs(dx) < Math.abs(dy) * 1.3) return; // 세로로 움직였으면 무시
+    const i = TAB_ORDER.indexOf(curTab);
+    const step = dx > 0 ? 1 : -1;
+    showTab(TAB_ORDER[(i + step + TAB_ORDER.length) % TAB_ORDER.length]);
+    swiped = true;
+    setTimeout(() => { swiped = false; }, 400);
   }, { passive: true });
+
+  /* 민 자리에 있던 버튼이나 입력칸이 따라 눌리지 않게 막는다 */
+  document.addEventListener('click', e => {
+    if (!swiped) return;
+    swiped = false;
+    e.stopPropagation();
+    e.preventDefault();
+  }, true);
 })();
 
 function showTab(which){
