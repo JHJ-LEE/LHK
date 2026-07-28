@@ -239,6 +239,7 @@
   dialog p{margin:0 0 16px;font-size:14px;line-height:1.5}
   dialog .row{display:flex;gap:8px;justify-content:flex-end}
 
+  #confirmDlg{max-width:370px;width:calc(100vw - 32px)}
   #dayDlg{max-width:400px;width:calc(100vw - 32px)}
   #dayDlg h3{margin:0;font-size:18px}
   .dlg-sub{font-size:12px;color:var(--muted);margin-top:2px}
@@ -1099,6 +1100,16 @@ function exportJson(){
   a.click();
   URL.revokeObjectURL(a.href);
 }
+/* 백업 파일에 무엇이 들어 있는지 한 줄로 요약 — 파일을 잘못 고르지 않도록 */
+function summarize(parsed){
+  const w = mergeWeekly(parsed?.weekly || parsed);
+  const times = MEMBERS.reduce((n, m) =>
+    n + DAYS.filter(d => w[m.key][d.key].go || w[m.key][d.key].back).length, 0);
+  const ev = Object.values(cleanEvents(parsed?.events)).reduce((n, l) => n + l.length, 0);
+  const mn = Object.values(cleanMoney(parsed?.money)).reduce((n, l) => n + l.length, 0);
+  return `시간표 ${times}칸 · 특별 일정 ${ev}건 · 용돈 기록 ${mn}건`;
+}
+
 function importJson(input){
   const file = input.files[0];
   if (!file) return;
@@ -1106,13 +1117,7 @@ function importJson(input){
   reader.onload = () => {
     try{
       const parsed = JSON.parse(reader.result);
-      data   = mergeWeekly(parsed?.weekly || parsed);   // v1 백업(주간만) 호환
-      events = cleanEvents(parsed?.events);
-      money  = cleanMoney(parsed?.money);
-      moods  = cleanMoods(parsed?.moods);
-      notice = String(parsed?.notice || '').slice(0, 500);
-      save(); saveEvents(); saveMoney(); saveMoods(); saveNotice();
-      renderWeek(); renderMonth(); renderMoney(); renderNotice(); renderToday();
+      askImport(parsed, file.name);
     }catch(e){
       alert('파일을 읽을 수 없습니다. 백업 파일이 맞는지 확인해 주세요.');
     }
@@ -1120,11 +1125,42 @@ function importJson(input){
   reader.readAsText(file);
   input.value = '';
 }
+
+/* 불러오기는 덮어쓰기다 — 반드시 확인을 받는다 */
+function askImport(parsed, fileName){
+  const dlg = document.getElementById('confirmDlg');
+  document.getElementById('confirmText').innerHTML =
+    `<b>${esc(fileName)}</b><br>
+     <span style="color:var(--muted);font-size:13px">${summarize(parsed)}</span><br><br>
+     이 내용으로 <b>덮어씁니다.</b> 지금 이 기기에 저장된 시간표·일정·용돈·기분·공지는
+     모두 사라집니다.<br><br>
+     <span style="color:var(--muted);font-size:13px">지금 기기의 내용이 더 최신이라면
+     취소하고, 먼저 「백업 파일 저장」으로 보관하세요.</span>`;
+  const ok = document.getElementById('confirmOk');
+  ok.textContent = '덮어쓰기';
+  ok.onclick = () => {
+    try{
+      data   = mergeWeekly(parsed?.weekly || parsed);   // v1 백업(주간만) 호환
+      events = cleanEvents(parsed?.events);
+      money  = cleanMoney(parsed?.money);
+      moods  = cleanMoods(parsed?.moods);
+      notice = String(parsed?.notice || '').slice(0, 500);
+      save(); saveEvents(); saveMoney(); saveMoods(); saveNotice();
+      renderWeek(); renderMonth(); renderMoney(); renderNotice(); renderToday();
+      dlg.close();
+    }catch(e){
+      alert('백업 파일의 내용이 올바르지 않습니다.');
+    }
+  };
+  dlg.showModal();
+}
+
 function askReset(){
   const dlg = document.getElementById('confirmDlg');
   document.getElementById('confirmText').textContent =
     '주간 시간표가 기본값으로 돌아가고, 달력의 특별 일정도 모두 삭제됩니다. (용돈 기록은 지워지지 않습니다) 계속할까요?';
   const ok = document.getElementById('confirmOk');
+  ok.textContent = '확인';
   ok.onclick = () => {
     data = seedData();
     events = {};
