@@ -100,13 +100,28 @@ window.LOCK = (function(){
   }
   .tabs button.on{background:var(--accent);color:#fff}
 
+  /* 상단(제목·탭·공지)은 그대로 두고 이 영역만 한 장씩 넘어간다.
+     clip 은 hidden 과 달리 세로 스크롤을 막지 않는다. */
+  .panels{position:relative;overflow-x:clip}
   .panel{display:none}
-  .panel.on{display:block;animation:tabIn .22s cubic-bezier(.22,.61,.36,1)}
-  @keyframes tabIn{
-    from{opacity:0;transform:translateX(var(--slide,22px))}
-    to{opacity:1;transform:translateX(0)}
+  .panel.on{display:block;animation:tabIn .26s cubic-bezier(.25,.8,.3,1)}
+  /* 나가는 화면은 자리를 차지하지 않게 띄워두고 밀어낸다 */
+  .panel.leaving{
+    display:block;position:absolute;top:0;left:0;right:0;pointer-events:none;
+    animation:tabOut .26s cubic-bezier(.25,.8,.3,1) forwards;
   }
-  @media (prefers-reduced-motion: reduce){ .panel.on{animation:none} }
+  @keyframes tabIn{
+    from{transform:translateX(var(--slide,100%))}
+    to{transform:translateX(0)}
+  }
+  @keyframes tabOut{
+    from{transform:translateX(0);opacity:1}
+    to{transform:translateX(var(--slide,-100%));opacity:0}
+  }
+  @media (prefers-reduced-motion: reduce){
+    .panel.on{animation:none}
+    .panel.leaving{display:none}
+  }
 
   /* ---- 오늘 ---- */
   .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}
@@ -388,6 +403,7 @@ window.LOCK = (function(){
     /* dvh 는 주소창이 접히고 펴질 때마다 값이 바뀌어 스크롤이 생긴다.
        svh(주소창이 보이는 상태의 높이)를 쓰면 어느 상태에서도 넘치지 않는다. */
     .wrap{min-height:100vh;min-height:100svh;display:flex;flex-direction:column}
+    .panels{flex:1;min-height:0;display:flex;flex-direction:column}
     #panelToday.on{display:flex;flex-direction:column;flex:1;min-height:0}
     /* minmax(0,1fr) 이라야 내용이 조금 길어져도 카드가 눌리며 맞춰진다 */
     #panelToday .cards{flex:1;grid-template-rows:minmax(0,1fr) minmax(0,1fr);min-height:0}
@@ -485,6 +501,8 @@ window.LOCK = (function(){
 
   <div class="notice" id="notice"></div>
 
+  <div class="panels" id="panels">
+
   <section id="panelToday" class="panel on">
     <div class="cards" id="todayCards"></div>
   </section>
@@ -543,6 +561,7 @@ window.LOCK = (function(){
     </div>
   </section>
 
+  </div>
 </div>
 
 <dialog id="moodDlg">
@@ -1569,14 +1588,35 @@ let curTab = 'today';
   }, true);
 })();
 
-/* dir 을 주면 그 방향으로 밀려 들어온다. 안 주면 탭 순서로 알아서 정한다. */
+const panelId = t => 'panel' + t[0].toUpperCase() + t.slice(1);
+let leaveTimer = null;
+
+/* dir 을 주면 그 방향으로 넘어간다. 안 주면 탭 순서로 알아서 정한다.
+   나가는 화면은 한쪽으로 밀려나가고 새 화면이 반대쪽에서 들어온다. */
 function showTab(which, dir){
   if (dir === undefined){
     const from = TAB_ORDER.indexOf(curTab), to = TAB_ORDER.indexOf(which);
     dir = to >= from ? 1 : -1;
   }
-  const panel = document.getElementById('panel' + which[0].toUpperCase() + which.slice(1));
-  panel.style.setProperty('--slide', (dir > 0 ? 22 : -22) + 'px');
+  const panel = document.getElementById(panelId(which));
+  const prev = document.getElementById(panelId(curTab));
+
+  /* 빠르게 여러 번 넘길 때 이전 잔상이 남지 않게 먼저 정리한다 */
+  clearTimeout(leaveTimer);
+  for (const p of document.querySelectorAll('.panel.leaving')){
+    p.classList.remove('leaving');
+    p.style.removeProperty('--slide');
+  }
+
+  if (prev && prev !== panel){
+    prev.style.setProperty('--slide', (dir > 0 ? -100 : 100) + '%');
+    prev.classList.add('leaving');
+    leaveTimer = setTimeout(() => {
+      prev.classList.remove('leaving');
+      prev.style.removeProperty('--slide');
+    }, 280);
+  }
+  panel.style.setProperty('--slide', (dir > 0 ? 100 : -100) + '%');
 
   curTab = which;
   for (const t of ['today','month','money','week']){
