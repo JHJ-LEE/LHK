@@ -59,9 +59,10 @@
     padding:16px;box-shadow:var(--shadow);position:relative;overflow:hidden;
   }
   .card::before{content:"";position:absolute;inset:0 auto 0 0;width:4px;background:var(--c)}
-  .card h3{margin:0 0 2px;font-size:17px;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+  .card-head{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:7px}
+  .card h3{margin:0;font-size:17px;display:flex;align-items:center;gap:7px}
   .dot{width:9px;height:9px;border-radius:50%;background:var(--c);flex:none}
-  .status{font-size:12px;font-weight:700;color:var(--c);margin-bottom:12px;display:block}
+  .status{font-size:12px;font-weight:700;color:var(--c)}
   .times{display:flex;gap:10px}
   .time-box{flex:1;background:var(--bg);border-radius:11px;padding:9px 11px}
   .time-box small{display:block;font-size:11px;color:var(--muted);margin-bottom:3px}
@@ -103,7 +104,7 @@
   .notice-tools .btn{padding:5px 10px;font-size:12px}
 
   /* ---- 기분 (카드 이름 옆) ---- */
-  .mood-pick{display:flex;gap:1px;margin-left:auto}
+  .mood-pick{display:flex;gap:1px;margin-bottom:11px}
   .mood-em{
     border:0;background:transparent;font-size:16px;line-height:1;padding:3px 4px;border-radius:8px;
     cursor:pointer;opacity:.32;filter:grayscale(1);transition:.15s;
@@ -286,8 +287,10 @@
     .sync{font-size:11px;order:3;width:100%;margin-left:0;justify-content:flex-end}
     .tabs button{padding:7px 10px;font-size:12.5px}
 
-    .notice{padding:9px 11px;margin-bottom:11px;gap:8px;align-items:center}
-    .notice-text{font-size:12.5px;line-height:1.45}
+    /* 공지는 잘 보이게 키우고, 대신 카드를 촘촘하게 */
+    .notice{padding:11px 12px;margin-bottom:10px;gap:9px;align-items:center}
+    .notice-icon{font-size:17px}
+    .notice-text{font-size:14px;line-height:1.5;font-weight:500}
     .notice-tools{flex-direction:row;gap:4px}
     .notice-tools .btn{padding:4px 8px;font-size:11px}
 
@@ -296,27 +299,27 @@
     #panelToday.on{display:flex;flex-direction:column;flex:1;min-height:0}
     #panelToday .cards{flex:1;grid-template-rows:1fr 1fr}
 
-    .cards{grid-template-columns:1fr 1fr;gap:9px}
-    .card{padding:12px 11px;display:flex;flex-direction:column}
-    /* 남는 세로 공간을 시간 박스가 흡수해 숫자가 크고 시원하게 보이도록 */
-    .times{flex:1}
-    .time-box{display:flex;flex-direction:column;justify-content:center}
+    .cards{grid-template-columns:1fr 1fr;gap:8px}
+    .card{padding:9px 9px;display:flex;flex-direction:column}
     .card::before{width:3px}
-    .card h3{font-size:14px;gap:5px;margin-bottom:1px}
+    /* 이름과 상태를 한 줄에 두어 한 줄을 아낀다 */
+    .card-head{gap:6px;margin-bottom:4px}
+    .card h3{font-size:13.5px;gap:5px}
     .dot{width:7px;height:7px}
-    .mood-pick{gap:0;margin-left:0;width:100%;justify-content:space-between}
-    .mood-em{font-size:15px;padding:2px 3px}
-    .status{font-size:10.5px;margin-bottom:8px}
-    .times{gap:6px}
-    .time-box{padding:8px 7px;border-radius:10px}
-    .time-box small{font-size:10.5px;margin-bottom:3px}
-    .time-box b{font-size:21px;letter-spacing:-.8px}
-    .time-box b.none{font-size:18px}
-    .card-badges{margin-top:8px;padding-top:8px;gap:3px}
-    .chip{font-size:9.5px;padding:1px 4px}
-    .say{margin-top:8px;gap:4px;flex:none}
-    .say-icon{font-size:11px}
-    .say-input{font-size:11px;padding:5px 7px;border-radius:8px}
+    .status{font-size:10px}
+    .mood-pick{gap:0;width:100%;justify-content:space-between;margin-bottom:6px}
+    .mood-em{font-size:14px;padding:1px 2px}
+    /* 남는 세로 공간은 시간 박스가 흡수한다 */
+    .times{gap:5px;flex:1}
+    .time-box{padding:5px;border-radius:9px;display:flex;flex-direction:column;justify-content:center}
+    .time-box small{font-size:9.5px;margin-bottom:1px}
+    .time-box b{font-size:18px;letter-spacing:-.7px}
+    .time-box b.none{font-size:16px}
+    .card-badges{margin-top:5px;padding-top:5px;gap:3px}
+    .card-badges .chip{font-size:9.5px;padding:1px 4px}
+    .say{margin-top:5px;gap:4px;flex:none}
+    .say-icon{font-size:10px}
+    .say-input{font-size:11px;padding:4px 6px;border-radius:8px}
     th:first-child,td:first-child{width:46px;font-size:12px}
     input[type=time]{min-width:0;font-size:13px;padding:6px 2px}
     .acad-wrap{min-width:78px;gap:3px}
@@ -331,20 +334,31 @@
     .hol{display:none}
   }
 
-  /* 세로가 짧은 휴대폰 — 네 카드가 넘치지 않도록 한 단계 더 줄인다 */
-  @media (max-width:560px) and (max-height:670px){
-    .wrap{padding-bottom:16px}
-    header{margin-bottom:9px}
-    .notice{padding:7px 10px;margin-bottom:9px}
-    .notice-text{font-size:12px}
-    .card{padding:10px 9px}
-    .status{font-size:10px;margin-bottom:6px}
-    .time-box{padding:6px}
-    .time-box small{font-size:10px;margin-bottom:2px}
-    .time-box b{font-size:18px}
-    .card-badges{margin-top:6px;padding-top:6px}
-    .say{margin-top:6px}
-    .say-input{padding:4px 7px}
+  /* 세로가 짧은 휴대폰(주소창·툴바가 있는 브라우저) — 한 단계 더 줄인다.
+     공지는 읽어야 하는 내용이라 최대한 건드리지 않는다. */
+  @media (max-width:560px) and (max-height:640px){
+    .wrap{padding:9px 9px 12px}
+    header{margin-bottom:8px;gap:6px}
+    h1{font-size:16px}
+    .today-label{font-size:10.5px}
+    .tabs button{padding:6px 9px;font-size:12px}
+    .notice{padding:9px 11px;margin-bottom:8px}
+    .notice-text{font-size:13px;line-height:1.45}
+
+    .cards{gap:7px}
+    .card{padding:8px}
+    .card-head{margin-bottom:3px}
+    .card h3{font-size:13px}
+    .status{font-size:9.5px}
+    .mood-pick{margin-bottom:5px}
+    .mood-em{font-size:13px}
+    .times{gap:4px}
+    .time-box{padding:4px}
+    .time-box small{font-size:9px}
+    .time-box b{font-size:16px}
+    .card-badges{margin-top:4px;padding-top:4px}
+    .say{margin-top:4px}
+    .say-input{font-size:10.5px;padding:3px 6px}
   }
 </style>
 </head>
@@ -795,8 +809,11 @@ function renderToday(){
 
     return `
       <div class="card" style="--c:${m.color}">
-        <h3><span class="dot"></span>${m.name}<span class="mood-pick">${moodPick}</span></h3>
-        <span class="status">${status}</span>
+        <div class="card-head">
+          <h3><span class="dot"></span>${m.name}</h3>
+          <span class="status">${status}</span>
+        </div>
+        <div class="mood-pick">${moodPick}</div>
         <div class="times">
           <div class="time-box">
             <small>${m.goLabel}</small>
