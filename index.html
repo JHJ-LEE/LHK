@@ -55,6 +55,8 @@ window.LOCK = (function(){
     font-family:"Pretendard","Apple SD Gothic Neo","Malgun Gothic",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
     -webkit-text-size-adjust:100%;
   }
+  /* 화면이 밀려 들어올 때 가로 스크롤바가 잠깐 생기지 않도록 */
+  body{overflow-x:hidden}
   .wrap{max-width:960px;margin:0 auto;padding:20px 16px 64px}
 
   /* ---- 비밀번호 잠금 ---- */
@@ -99,7 +101,12 @@ window.LOCK = (function(){
   .tabs button.on{background:var(--accent);color:#fff}
 
   .panel{display:none}
-  .panel.on{display:block}
+  .panel.on{display:block;animation:tabIn .22s cubic-bezier(.22,.61,.36,1)}
+  @keyframes tabIn{
+    from{opacity:0;transform:translateX(var(--slide,22px))}
+    to{opacity:1;transform:translateX(0)}
+  }
+  @media (prefers-reduced-motion: reduce){ .panel.on{animation:none} }
 
   /* ---- 오늘 ---- */
   .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}
@@ -1514,18 +1521,25 @@ let curTab = 'today';
      오늘에서 손가락을 오른쪽으로 끌면 주간 설정 */
 (function setupSwipe(){
   let x0 = 0, y0 = 0, live = false, swiped = false;
+  let scroller = null, scrollAt = 0;
 
   document.addEventListener('touchstart', e => {
     live = false;
+    scroller = null;
     if (e.touches.length !== 1) return;
     if (document.documentElement.classList.contains('locked')) return;
-    /* 가로로 스크롤되는 표와 팝업 안에서는 넘기지 않는다.
-       버튼·입력칸은 제외하지 않는다 — 오늘 화면은 대부분이 그것들이라
-       제외하면 스와이프가 거의 먹지 않는다. */
-    if (e.target.closest && e.target.closest('.table-scroll, dialog')) return;
-    /* 다만 지금 편집 중인 칸 위에서 끄는 것은 글자 선택이므로 건드리지 않는다 */
+    if (e.target.closest && e.target.closest('dialog')) return;
+    /* 지금 편집 중인 칸 위에서 끄는 것은 글자 선택이므로 건드리지 않는다 */
     const a = document.activeElement;
     if (a === e.target && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA')) return;
+
+    /* 주간 설정 표는 화면 전체를 덮고 있어 통째로 제외하면 스와이프가 아예 안 된다.
+       실제로 표가 좌우로 움직였는지 나중에 확인해서 판단한다. */
+    const sc = e.target.closest && e.target.closest('.table-scroll');
+    if (sc && sc.scrollWidth > sc.clientWidth + 1){
+      scroller = sc;
+      scrollAt = sc.scrollLeft;
+    }
     x0 = e.touches[0].clientX;
     y0 = e.touches[0].clientY;
     live = true;
@@ -1534,13 +1548,14 @@ let curTab = 'today';
   document.addEventListener('touchend', e => {
     if (!live) return;
     live = false;
+    if (scroller && scroller.scrollLeft !== scrollAt) return;  // 표를 좌우로 본 것
     const dx = e.changedTouches[0].clientX - x0;
     const dy = e.changedTouches[0].clientY - y0;
     if (Math.abs(dx) < 55) return;                 // 너무 짧으면 무시
     if (Math.abs(dx) < Math.abs(dy) * 1.3) return; // 세로로 움직였으면 무시
     const i = TAB_ORDER.indexOf(curTab);
     const step = dx < 0 ? 1 : -1;      // 왼쪽으로 끌면 다음 탭
-    showTab(TAB_ORDER[(i + step + TAB_ORDER.length) % TAB_ORDER.length]);
+    showTab(TAB_ORDER[(i + step + TAB_ORDER.length) % TAB_ORDER.length], step);
     swiped = true;
     setTimeout(() => { swiped = false; }, 300);
   }, { passive: true });
@@ -1554,7 +1569,15 @@ let curTab = 'today';
   }, true);
 })();
 
-function showTab(which){
+/* dir 을 주면 그 방향으로 밀려 들어온다. 안 주면 탭 순서로 알아서 정한다. */
+function showTab(which, dir){
+  if (dir === undefined){
+    const from = TAB_ORDER.indexOf(curTab), to = TAB_ORDER.indexOf(which);
+    dir = to >= from ? 1 : -1;
+  }
+  const panel = document.getElementById('panel' + which[0].toUpperCase() + which.slice(1));
+  panel.style.setProperty('--slide', (dir > 0 ? 22 : -22) + 'px');
+
   curTab = which;
   for (const t of ['today','month','money','week']){
     const on = t === which;
