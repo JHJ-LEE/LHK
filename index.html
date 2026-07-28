@@ -13,6 +13,29 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="가족어플">
+
+<!-- 비밀번호 잠금 판정.
+     화면이 잠깐 보였다 가려지는 것을 막으려고 본문보다 먼저 실행한다.
+     비밀번호는 변환한 값만 저장한다 — 공개 저장소에 그대로 적히지 않도록. -->
+<script>
+window.LOCK = (function(){
+  function hash(code){
+    let h = 0x811c9dc5;
+    const s = 'lhk-family:' + code;
+    for (let i = 0; i < s.length; i++){
+      h ^= s.charCodeAt(i);
+      h = Math.imul(h, 0x01000193) >>> 0;
+    }
+    return h.toString(36);
+  }
+  const KEY = 'family-unlock-v1';
+  const WANT = '1h1dtow';
+  let unlocked = false;
+  try { unlocked = localStorage.getItem(KEY) === WANT; } catch (e) {}
+  if (!unlocked) document.documentElement.classList.add('locked');
+  return { KEY, WANT, hash };
+})();
+</script>
 <style>
   :root{
     --bg:#f4f6fb; --card:#ffffff; --line:#e3e8f0; --text:#1a2233; --muted:#7a8699;
@@ -33,6 +56,32 @@
     -webkit-text-size-adjust:100%;
   }
   .wrap{max-width:960px;margin:0 auto;padding:20px 16px 64px}
+
+  /* ---- 비밀번호 잠금 ---- */
+  .lock{display:none}
+  :root.locked .wrap{visibility:hidden}
+  :root.locked body{overflow:hidden}
+  :root.locked .lock{
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;
+    position:fixed;inset:0;z-index:100;background:var(--bg);padding:24px;text-align:center;
+  }
+  .lock-logo{width:78px;height:78px;border-radius:20px;box-shadow:var(--shadow)}
+  .lock h2{margin:6px 0 0;font-size:19px;letter-spacing:-.4px}
+  .lock-sub{margin:0;font-size:13.5px;color:var(--muted)}
+  #lockInput{
+    width:190px;font:inherit;font-size:26px;font-weight:700;letter-spacing:10px;
+    text-align:center;padding:12px 10px 12px 20px;border-radius:14px;
+    border:1px solid var(--line);background:var(--card);color:var(--text);
+  }
+  #lockInput:focus{outline:2px solid var(--accent);outline-offset:-1px;border-color:transparent}
+  .lock-msg{font-size:12.5px;color:var(--muted);min-height:18px}
+  .lock-msg.err{color:#ef4444;font-weight:600}
+  .lock.shake{animation:shake .35s}
+  @keyframes shake{
+    0%,100%{transform:translateX(0)}
+    20%,60%{transform:translateX(-9px)}
+    40%,80%{transform:translateX(9px)}
+  }
 
   header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px;flex-wrap:wrap}
   h1{font-size:22px;margin:0;letter-spacing:-.4px}
@@ -370,6 +419,15 @@
 </style>
 </head>
 <body>
+<div class="lock" id="lockScreen">
+  <img class="lock-logo" src="./icon-192.png" alt="" onerror="this.remove()">
+  <h2>준&amp;하진이네 가족어플</h2>
+  <p class="lock-sub">비밀번호를 입력하세요</p>
+  <input type="password" id="lockInput" inputmode="numeric" pattern="[0-9]*"
+    maxlength="6" autocomplete="off" aria-label="비밀번호">
+  <div class="lock-msg" id="lockMsg">이 기기에서는 처음 한 번만 입력하면 됩니다</div>
+</div>
+
 <div class="wrap">
 
   <header>
@@ -1380,6 +1438,37 @@ function showTab(which){
 
 document.getElementById('mDate').value = ymdOf(new Date());
 setKind('in');
+
+/* ---------- 비밀번호 잠금 ---------- */
+(function setupLock(){
+  const box = document.getElementById('lockScreen');
+  const input = document.getElementById('lockInput');
+  const msg = document.getElementById('lockMsg');
+  const isLocked = () => document.documentElement.classList.contains('locked');
+
+  if (isLocked()) setTimeout(() => input.focus(), 60);
+
+  input.addEventListener('input', () => {
+    const v = input.value.replace(/[^0-9]/g, '');
+    if (v !== input.value) input.value = v;
+    msg.classList.remove('err');
+    if (v.length < 6) return;
+
+    if (LOCK.hash(v) === LOCK.WANT){
+      try { localStorage.setItem(LOCK.KEY, LOCK.WANT); } catch (e) {}
+      document.documentElement.classList.remove('locked');
+      input.value = '';
+      input.blur();
+      renderToday();                    // 잠금 중 멈춰 있던 화면을 새로 맞춘다
+    } else {
+      box.classList.add('shake');
+      setTimeout(() => box.classList.remove('shake'), 400);
+      msg.textContent = '비밀번호가 맞지 않습니다';
+      msg.classList.add('err');
+      input.value = '';
+    }
+  });
+})();
 
 function renderAll(){
   if (!noticeEditing) renderNotice();   // 입력 중인 공지는 건드리지 않는다
