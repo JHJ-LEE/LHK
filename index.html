@@ -168,13 +168,21 @@ window.LOCK = (function(){
   .empty{color:var(--muted);font-size:14px;padding:8px 0}
 
   /* ---- 오늘의 한자 · 영어 ---- */
-  .words{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;flex:none}
+  /* --row-h 하나로 발음 버튼 크기와 줄 높이를 함께 정한다.
+     그래야 발음 버튼이 없는 한자 칸도 영어 칸과 줄 간격이 똑같아진다. */
+  .words{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;flex:none;
+    --row-h:32px}
   .word-box{background:var(--card);border:1px solid var(--line);border-radius:14px;
     padding:10px 12px;box-shadow:var(--shadow);min-width:0}
   .word-label{display:block;font-size:10.5px;font-weight:800;letter-spacing:.4px;
     color:var(--muted);margin-bottom:6px}
-  .word-row{display:flex;align-items:center;gap:7px;min-width:0}
-  .word-row + .word-row{margin-top:4px;padding-top:4px;border-top:1px dashed var(--line)}
+  .word-row{display:flex;align-items:center;gap:7px;min-width:0;min-height:var(--row-h)}
+  /* 구분선을 테두리로 그리면 그만큼 줄 높이가 늘어 한자 칸과 영어 칸이 어긋난다.
+     높이에 영향을 주지 않는 배경선으로 그린다. */
+  .word-row + .word-row{
+    margin-top:5px;
+    background:linear-gradient(var(--line), var(--line)) top/100% 1px no-repeat;
+  }
   .word-row b{font-size:15px;font-weight:700;flex:none;white-space:nowrap}
   .word-row small{font-size:12px;color:var(--muted);flex:1;min-width:0;
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -183,7 +191,7 @@ window.LOCK = (function(){
   .eng-w{letter-spacing:-.3px;font-size:17px}
   .eng-w.idiom{font-size:14px}
   .speak{
-    flex:none;margin-left:auto;width:32px;height:32px;border-radius:50%;
+    flex:none;margin-left:auto;width:var(--row-h);height:var(--row-h);border-radius:50%;
     border:1px solid var(--line);background:var(--bg);font-size:15px;
     cursor:pointer;transition:.15s;
   }
@@ -453,17 +461,17 @@ window.LOCK = (function(){
     .mood-btn .em{font-size:14px}
 
     /* 단어 칸은 카드 위에 낮게 한 줄로 */
-    .words{gap:7px;margin:0 0 8px}
+    .words{gap:7px;margin:0 0 8px;--row-h:26px}
     .word-box{padding:5px 9px;border-radius:11px}
     .word-label{font-size:9.5px;margin-bottom:2px}
     .word-row{gap:6px}
-    .word-row + .word-row{margin-top:2px;padding-top:2px}
+    .word-row + .word-row{margin-top:3px}
     .word-row b{font-size:12.5px}
     .word-row small{font-size:10.5px}
     .hanja-char{font-size:20px;width:24px}
     .eng-w{font-size:14px}
     .eng-w.idiom{font-size:12px}
-    .speak{width:26px;height:26px;font-size:13px}
+    .speak{font-size:13px}
     /* 시간 칸은 PC 처럼 낮게, 글자는 가운데로 */
     .times{gap:5px;flex:none}
     .time-box{padding:5px 4px;border-radius:9px;text-align:center}
@@ -507,7 +515,7 @@ window.LOCK = (function(){
     .card h3{font-size:13px}
     .status{font-size:9.5px}
     .card-badges{min-height:22px;margin-top:4px;padding-top:4px}
-    .words{margin-bottom:6px;gap:6px}
+    .words{margin-bottom:6px;gap:6px;--row-h:24px}
     .mood-pick{margin-bottom:4px}
     .mood-btn{padding:3px 7px;font-size:10.5px;gap:4px}
     .mood-btn .em{font-size:13px}
@@ -520,19 +528,19 @@ window.LOCK = (function(){
     .say-input{font-size:9.5px;padding:2px 5px}
     .word-box{padding:4px 8px}
     .word-label{font-size:9px;margin-bottom:2px}
-    .word-row + .word-row{margin-top:2px;padding-top:2px}
+    .word-row + .word-row{margin-top:3px}
     .hanja-char{font-size:18px;width:22px}
     .word-row b{font-size:11.5px}
     .word-row small{font-size:10px}
     .eng-w{font-size:13px}
     .eng-w.idiom{font-size:11.5px}
-    .speak{width:24px;height:24px;font-size:12px}
+    .speak{font-size:12px}
   }
 
   /* 아주 짧은 화면(주소창·툴바가 모두 보이는 소형 기기) — 마지막 단계로 더 줄인다 */
   @media (max-width:560px) and (max-height:580px){
     .wrap{padding:7px 8px calc(7px + env(safe-area-inset-bottom))}
-    .words{margin-bottom:5px}
+    .words{margin-bottom:5px;--row-h:22px}
     h1{font-size:15px}
     .notice{padding:6px 9px;margin-bottom:6px}
     .notice-text{font-size:12.5px;line-height:1.35}
@@ -542,7 +550,7 @@ window.LOCK = (function(){
     .word-row b{font-size:11px}
     .eng-w{font-size:12px}
     .eng-w.idiom{font-size:11px}
-    .speak{width:22px;height:22px;font-size:11px}
+    .speak{font-size:11px}
     .card{padding:5px}
     .mood-btn{padding:2px 6px;font-size:10px}
     .time-box small{font-size:8px}
