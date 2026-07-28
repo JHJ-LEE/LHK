@@ -396,14 +396,10 @@
      비워두면 예전처럼 각 기기에만 저장된다(동작에는 문제 없음).
      ══════════════════════════════════════════════════════════════════════════ -->
 <script>
-window.FIREBASE_CONFIG = {
-  apiKey:            "",   // ← Firebase 콘솔의 웹 앱 설정값을 붙여넣으세요
-  authDomain:        "",
-  projectId:         "",
-  storageBucket:     "",
-  messagingSenderId: "",
-  appId:             "",
-  familyId:          "lhk-family",   // 우리 가족 데이터를 담을 문서 이름 (그대로 두면 됨)
+window.SUPABASE_CONFIG = {
+  url:      "",   // ← Supabase → Settings → API 의 Project URL
+  anonKey:  "",   // ← 같은 화면의 anon public 키
+  familyId: "lhk-family",   // 우리 가족 데이터를 담을 행 이름 (그대로 두면 됨)
 };
 </script>
 
@@ -1240,37 +1236,33 @@ setInterval(renderToday, 60000);   // 1분마다 상태 갱신
      FIREBASE_CONFIG 가 비어 있으면 아무것도 하지 않고 로컬 전용으로 남는다.
      ══════════════════════════════════════════════════════════════════════════ -->
 <script type="module">
-const cfg = window.FIREBASE_CONFIG || {};
+const cfg = window.SUPABASE_CONFIG || {};
 const app = window.familyApp;
+const ROW = cfg.familyId || 'lhk-family';
 
-if (!cfg.apiKey || !cfg.projectId){
+/* 내가 보낸 변경이 되돌아왔을 때 무시하기 위한 기기 식별자 */
+const ME = Math.random().toString(36).slice(2) + Date.now().toString(36);
+
+if (!cfg.url || !cfg.anonKey){
   app.setSyncStatus('local', '동기화 설정이 비어 있습니다');
 } else {
   app.setSyncStatus('connecting');
   try{
-    const V = '10.14.1';
-    const [core, auth, fs] = await Promise.all([
-      import(`https://www.gstatic.com/firebasejs/${V}/firebase-app.js`),
-      import(`https://www.gstatic.com/firebasejs/${V}/firebase-auth.js`),
-      import(`https://www.gstatic.com/firebasejs/${V}/firebase-firestore.js`),
-    ]);
-
-    const fbApp = core.initializeApp(cfg);
-    await auth.signInAnonymously(auth.getAuth(fbApp));
-
-    const db  = fs.getFirestore(fbApp);
-    const ref = fs.doc(db, 'families', cfg.familyId || 'default');
+    const { createClient } =
+      await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
+    const sb = createClient(cfg.url, cfg.anonKey, { auth: { persistSession: false } });
 
     let applying = false;   // 원격 반영 중에는 되돌려 보내지 않는다
     let timer = null;
 
     async function push(){
-      try{
-        /* merge 를 쓰지 않는다 — 항목 삭제가 상대 기기에 전달되어야 하기 때문 */
-        await fs.setDoc(ref, { ...app.snapshot(), updatedAt: Date.now() });
-      }catch(e){
-        app.setSyncStatus('error', e.message);
-      }
+      const { error } = await sb.from('family_state').upsert({
+        id: ROW,
+        data: app.snapshot(),
+        writer: ME,
+        updated_at: new Date().toISOString(),
+      });
+      if (error) app.setSyncStatus('error', error.message);
     }
 
     app.onChange = () => {
@@ -1279,16 +1271,36 @@ if (!cfg.apiKey || !cfg.projectId){
       timer = setTimeout(push, 500);   // 연속 입력을 묶어서 한 번에 전송
     };
 
-    fs.onSnapshot(ref, snap => {
-      if (snap.metadata.hasPendingWrites) return;   // 내 쓰기가 되돌아온 것
-      app.setSyncStatus('live');
-      if (!snap.exists()){ push(); return; }        // 첫 사용 — 이 기기 내용으로 시작
+    function receive(row){
+      if (!row || row.writer === ME) return;   // 내가 보낸 것은 무시
       applying = true;
-      try{ app.apply(snap.data()); } finally { applying = false; }
-    }, err => app.setSyncStatus('error', err.message));
+      try{ app.apply(row.data); } finally { applying = false; }
+    }
+
+    /* 첫 로드 — 서버에 내용이 있으면 그것을 따르고, 없으면 이 기기 내용으로 시작 */
+    const { data: row, error } = await sb
+      .from('family_state').select('data, writer').eq('id', ROW).maybeSingle();
+    if (error) throw error;
+    if (row){
+      applying = true;
+      try{ app.apply(row.data); } finally { applying = false; }
+    } else {
+      await push();
+    }
+
+    /* 이후 변경을 실시간으로 수신 */
+    sb.channel('family-state')
+      .on('postgres_changes',
+          { event: '*', schema: 'public', table: 'family_state', filter: `id=eq.${ROW}` },
+          payload => receive(payload.new))
+      .subscribe(status => {
+        if (status === 'SUBSCRIBED')       app.setSyncStatus('live');
+        else if (status === 'CHANNEL_ERROR') app.setSyncStatus('error', '실시간 연결 실패');
+        else if (status === 'TIMED_OUT')     app.setSyncStatus('error', '연결 시간 초과');
+      });
 
   }catch(e){
-    app.setSyncStatus('error', e.message);
+    app.setSyncStatus('error', e.message || String(e));
   }
 }
 </script>
