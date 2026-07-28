@@ -1,0 +1,1086 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>준&amp;하진이네 가족어플</title>
+<style>
+  :root{
+    --bg:#f4f6fb; --card:#ffffff; --line:#e3e8f0; --text:#1a2233; --muted:#7a8699;
+    --accent:#4c6ef5; --shadow:0 1px 3px rgba(20,30,60,.06),0 8px 24px rgba(20,30,60,.06);
+    --dad:#3b82f6; --mom:#ec4899; --jun:#10b981; --hajin:#f59e0b;
+    --radius:16px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#12151c; --card:#1a1f29; --line:#2a3140; --text:#e8ecf3; --muted:#8e9aae;
+      --shadow:0 1px 3px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.3);
+    }
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:"Pretendard","Apple SD Gothic Neo","Malgun Gothic",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    -webkit-text-size-adjust:100%;
+  }
+  .wrap{max-width:960px;margin:0 auto;padding:20px 16px 64px}
+
+  header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px;flex-wrap:wrap}
+  h1{font-size:22px;margin:0;letter-spacing:-.4px}
+  .today-label{font-size:13px;color:var(--muted);margin-top:3px}
+
+  .tabs{display:flex;gap:4px;background:var(--card);padding:4px;border-radius:12px;border:1px solid var(--line)}
+  .tabs button{
+    border:0;background:transparent;color:var(--muted);font:inherit;font-size:14px;font-weight:600;
+    padding:8px 16px;border-radius:9px;cursor:pointer;transition:.15s;
+  }
+  .tabs button.on{background:var(--accent);color:#fff}
+
+  .panel{display:none}
+  .panel.on{display:block}
+
+  /* ---- 오늘 ---- */
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}
+  .card{
+    background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    padding:16px;box-shadow:var(--shadow);position:relative;overflow:hidden;
+  }
+  .card::before{content:"";position:absolute;inset:0 auto 0 0;width:4px;background:var(--c)}
+  .card h3{margin:0 0 2px;font-size:17px;display:flex;align-items:center;gap:7px}
+  .dot{width:9px;height:9px;border-radius:50%;background:var(--c);flex:none}
+  .status{font-size:12px;font-weight:700;color:var(--c);margin-bottom:12px;display:block}
+  .times{display:flex;gap:10px}
+  .time-box{flex:1;background:var(--bg);border-radius:11px;padding:9px 11px}
+  .time-box small{display:block;font-size:11px;color:var(--muted);margin-bottom:3px}
+  .time-box b{font-size:19px;font-variant-numeric:tabular-nums;letter-spacing:-.5px}
+  .time-box b.none{color:var(--muted);font-weight:500;font-size:16px}
+  .card-badges{display:flex;gap:5px;flex-wrap:wrap;margin-top:10px;padding-top:10px;
+    border-top:1px dashed var(--line)}
+
+  .empty{color:var(--muted);font-size:14px;padding:8px 0}
+
+  /* ---- 오늘의 기분 ---- */
+  .head-mood{font-size:19px;line-height:1;margin-left:2px}
+  .mood-box{margin-top:22px;background:var(--card);border:1px solid var(--line);
+    border-radius:var(--radius);padding:16px;box-shadow:var(--shadow)}
+  .mood-box h2{font-size:15px;margin:0 0 3px}
+  .mood-sub{font-size:12px;color:var(--muted);margin-bottom:14px}
+  .mood-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--line)}
+  .mood-row:first-child{border-top:0;padding-top:2px}
+  .mood-name{display:flex;align-items:center;gap:7px;font-size:14px;font-weight:700;
+    color:var(--c);width:52px;flex:none}
+  .mood-opts{display:flex;gap:6px;flex-wrap:wrap}
+  .mood-btn{
+    display:flex;align-items:center;gap:5px;border:1px solid var(--line);background:var(--bg);
+    color:var(--muted);font:inherit;font-size:12px;font-weight:600;padding:7px 11px;
+    border-radius:20px;cursor:pointer;transition:.15s;white-space:nowrap;
+  }
+  .mood-btn:hover{border-color:var(--muted);color:var(--text)}
+  .mood-btn .em{font-size:15px;line-height:1}
+  .mood-btn.on{background:var(--mb);border-color:transparent;color:var(--mf);font-weight:700}
+
+  /* ---- 주간 ---- */
+  .member-block{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    padding:16px;margin-bottom:14px;box-shadow:var(--shadow)}
+  .member-head{display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+  .member-head h3{margin:0;font-size:16px}
+  .member-head .tools{margin-left:auto;display:flex;gap:6px}
+  .btn{
+    border:1px solid var(--line);background:var(--bg);color:var(--muted);font:inherit;font-size:12px;
+    font-weight:600;padding:6px 11px;border-radius:8px;cursor:pointer;white-space:nowrap;transition:.15s;
+  }
+  .btn:hover{color:var(--text);border-color:var(--muted)}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+
+  .table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  table{width:100%;border-collapse:collapse;min-width:320px}
+  th,td{padding:6px 4px;text-align:center}
+  th{font-size:12px;color:var(--muted);font-weight:600}
+  th:first-child,td:first-child{text-align:left;width:64px;font-size:13px;color:var(--muted)}
+  tr.weekend th, tr.weekend td:first-child{color:#ef4444}
+  tr.today{background:color-mix(in srgb,var(--accent) 8%,transparent)}
+  tr.today td:first-child{font-weight:700;color:var(--accent)}
+  input[type=time]{
+    width:100%;min-width:104px;font:inherit;font-size:14px;font-variant-numeric:tabular-nums;
+    padding:7px 8px;border:1px solid var(--line);border-radius:9px;
+    background:var(--bg);color:var(--text);text-align:center;
+  }
+  input[type=time]:focus{outline:2px solid var(--accent);outline-offset:-1px;border-color:transparent}
+  input[type=time]:invalid{box-shadow:none}
+  .ox{
+    width:100%;max-width:54px;border:1px solid var(--line);background:var(--bg);color:var(--muted);
+    font:inherit;font-size:14px;font-weight:800;padding:7px 0;border-radius:9px;cursor:pointer;transition:.15s;
+  }
+  .ox:hover{border-color:var(--ox,var(--muted))}
+  .ox.on{background:var(--ox,#6366f1);border-color:var(--ox,#6366f1);color:#fff}
+  .acad-wrap{display:flex;flex-wrap:wrap;gap:4px;justify-content:center;min-width:96px}
+  .acad{
+    border:1px solid var(--line);background:var(--bg);color:var(--muted);font:inherit;
+    font-size:11px;font-weight:700;padding:5px 7px;border-radius:7px;cursor:pointer;transition:.15s;
+  }
+  .acad:hover{border-color:#a855f7;color:var(--text)}
+  .acad.on{background:#7e22ce;border-color:#7e22ce;color:#fff}
+
+  .footer-bar{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;flex-wrap:wrap}
+  .saved{font-size:12px;color:var(--muted);margin-right:auto;align-self:center}
+
+  /* ---- 월간 ---- */
+  .cal-head{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+  .cal-title{font-size:17px;font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums}
+  .cal-nav{margin-left:auto;display:flex;gap:6px}
+  .cal{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    overflow:hidden;box-shadow:var(--shadow)}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr)}
+  .dow{padding:9px 0;text-align:center;font-size:12px;font-weight:700;color:var(--muted);
+    border-bottom:1px solid var(--line)}
+  .dow.sun{color:#ef4444}
+  .dow.sat{color:#3b82f6}
+  .cell{min-height:94px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);
+    padding:5px;cursor:pointer;transition:background .12s;display:flex;flex-direction:column;gap:3px}
+  .cell:nth-child(7n){border-right:0}
+  .cell:hover{background:color-mix(in srgb,var(--accent) 6%,transparent)}
+  .cell.blank{background:var(--bg);cursor:default}
+  .cell.blank:hover{background:var(--bg)}
+  .cell .num{font-size:13px;font-weight:600;font-variant-numeric:tabular-nums}
+  .cell.sat .num{color:#3b82f6}
+  .cell.sun .num,.cell.holiday .num{color:#ef4444}
+  .cell.today{box-shadow:inset 0 0 0 2px var(--accent)}
+  .hol{font-size:10px;color:#ef4444;font-weight:600;margin-top:-2px}
+  .chip{font-size:11px;font-weight:600;padding:2px 5px;border-radius:5px;line-height:1.5;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .more{font-size:10px;color:var(--muted);padding-left:3px}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:12px;padding-left:2px}
+  .legend span{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:5px}
+  .legend i{width:9px;height:9px;border-radius:50%}
+  .hint{font-size:12px;color:var(--muted);margin-top:10px}
+
+  /* ---- 용돈기입장 ---- */
+  .kid-tabs{display:flex;gap:8px;margin-bottom:14px}
+  .kid-tabs button{
+    flex:1;border:1px solid var(--line);background:var(--card);color:var(--muted);font:inherit;
+    font-size:15px;font-weight:700;padding:11px;border-radius:12px;cursor:pointer;transition:.15s;
+  }
+  .kid-tabs button.on{background:var(--c);border-color:var(--c);color:#fff}
+
+  .balance{
+    background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    padding:20px;box-shadow:var(--shadow);text-align:center;position:relative;overflow:hidden;
+  }
+  .balance::before{content:"";position:absolute;inset:0 0 auto 0;height:4px;background:var(--c)}
+  .balance small{display:block;font-size:13px;color:var(--muted);margin-bottom:5px}
+  .balance .amt{font-size:36px;font-weight:800;letter-spacing:-1.5px;font-variant-numeric:tabular-nums}
+  .balance .amt.minus{color:#ef4444}
+  .balance .piggy{font-size:26px;margin-bottom:2px}
+
+  .money-form{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    padding:16px;margin-top:14px;box-shadow:var(--shadow)}
+  .kind-toggle{display:flex;gap:6px;margin-bottom:12px}
+  .kind-toggle button{
+    flex:1;border:1px solid var(--line);background:var(--bg);color:var(--muted);font:inherit;
+    font-size:14px;font-weight:700;padding:10px;border-radius:11px;cursor:pointer;transition:.15s;
+  }
+  .kind-toggle button.on#kindIn {background:#10b981;border-color:#10b981;color:#fff}
+  .kind-toggle button.on#kindOut{background:#ef4444;border-color:#ef4444;color:#fff}
+  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .form-grid input,.form-grid select{
+    font:inherit;font-size:14px;padding:10px;border:1px solid var(--line);border-radius:10px;
+    background:var(--bg);color:var(--text);min-width:0;
+  }
+  .form-grid input:focus,.form-grid select:focus{outline:2px solid var(--accent);outline-offset:-1px}
+  .form-grid #mMemo{grid-column:1/-1}
+  .form-grid #mAmount{text-align:right;font-weight:700;font-variant-numeric:tabular-nums}
+  .form-grid button{grid-column:1/-1;padding:11px;font-size:14px}
+
+  .month-sum{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+  .sum-box{background:var(--card);border:1px solid var(--line);border-radius:13px;
+    padding:13px 15px;box-shadow:var(--shadow)}
+  .sum-box small{display:block;font-size:12px;color:var(--muted);margin-bottom:3px}
+  .sum-box b{font-size:18px;font-variant-numeric:tabular-nums}
+  .sum-box.in b{color:#10b981}
+  .sum-box.out b{color:#ef4444}
+
+  .ledger{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    margin-top:14px;box-shadow:var(--shadow);overflow:hidden}
+  .led-date{font-size:12px;font-weight:700;color:var(--muted);background:var(--bg);
+    padding:7px 15px;border-bottom:1px solid var(--line)}
+  .led-row{display:flex;align-items:center;gap:11px;padding:11px 15px;border-bottom:1px solid var(--line)}
+  .led-row:last-child{border-bottom:0}
+  .led-icon{width:32px;height:32px;border-radius:10px;display:grid;place-items:center;
+    font-size:15px;flex:none}
+  .led-txt{min-width:0}
+  .led-txt b{display:block;font-size:14px;font-weight:600;white-space:nowrap;
+    overflow:hidden;text-overflow:ellipsis}
+  .led-txt small{font-size:12px;color:var(--muted)}
+  .led-amt{margin-left:auto;font-size:15px;font-weight:700;font-variant-numeric:tabular-nums;flex:none}
+  .led-amt.in{color:#10b981}
+  .led-amt.out{color:#ef4444}
+  .led-del{border:0;background:transparent;color:var(--muted);cursor:pointer;font-size:14px;
+    padding:2px 0 2px 4px;opacity:.45;flex:none}
+  .led-del:hover{opacity:1;color:#ef4444}
+  .led-empty{padding:28px 16px;text-align:center;color:var(--muted);font-size:14px;line-height:1.7}
+
+  dialog{border:0;border-radius:14px;padding:20px;background:var(--card);color:var(--text);
+    box-shadow:var(--shadow);max-width:320px}
+  dialog::backdrop{background:rgba(0,0,0,.4)}
+  dialog p{margin:0 0 16px;font-size:14px;line-height:1.5}
+  dialog .row{display:flex;gap:8px;justify-content:flex-end}
+
+  #dayDlg{max-width:400px;width:calc(100vw - 32px)}
+  #dayDlg h3{margin:0;font-size:18px}
+  .dlg-sub{font-size:12px;color:var(--muted);margin-top:2px}
+  .sec-title{font-size:12px;font-weight:700;color:var(--muted);margin:16px 0 8px}
+  .reg-row{display:flex;align-items:center;gap:9px;font-size:13px;padding:3px 0}
+  .reg-row .nm{font-weight:700;color:var(--c);width:40px;flex:none}
+  .reg-row .tm{color:var(--muted);font-variant-numeric:tabular-nums}
+  .ev-item{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:9px;
+    font-size:13px;font-weight:600;margin-bottom:5px}
+  .ev-item .memo{font-weight:400;opacity:.8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .ev-item .x{margin-left:auto;border:0;background:transparent;color:inherit;opacity:.55;
+    cursor:pointer;font-size:15px;line-height:1;padding:0 2px;flex:none}
+  .ev-item .x:hover{opacity:1}
+  .add-form{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:10px}
+  .add-form select,.add-form input[type=text]{
+    font:inherit;font-size:13px;padding:8px;border:1px solid var(--line);
+    border-radius:9px;background:var(--bg);color:var(--text);min-width:0}
+  .add-form input[type=text],.add-form button{grid-column:1/-1}
+
+  @media (max-width:560px){
+    h1{font-size:19px}
+    .times{gap:8px}
+    .time-box b{font-size:17px}
+    th:first-child,td:first-child{width:46px;font-size:12px}
+    input[type=time]{min-width:0;font-size:13px;padding:6px 2px}
+    .acad-wrap{min-width:78px;gap:3px}
+    .acad{font-size:10px;padding:4px 5px}
+    .ox{font-size:12px;padding:6px 0;max-width:40px}
+    th,td{padding:5px 2px}
+    th{font-size:11px}
+    .mood-row{flex-direction:column;align-items:flex-start;gap:8px}
+    .mood-name{width:auto}
+    .mood-btn{font-size:11px;padding:6px 9px}
+    .balance .amt{font-size:30px}
+    .form-grid{grid-template-columns:1fr}
+    .tabs button{padding:8px 11px;font-size:13px}
+    .cell{min-height:66px;padding:3px}
+    .chip{font-size:10px;padding:1px 3px}
+    .hol{display:none}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div>
+      <h1>👨‍👩‍👦‍👦 준&amp;하진이네 가족어플</h1>
+      <div class="today-label" id="todayLabel"></div>
+    </div>
+    <nav class="tabs">
+      <button id="tabToday" class="on" onclick="showTab('today')">오늘</button>
+      <button id="tabMonth" onclick="showTab('month')">월간</button>
+      <button id="tabMoney" onclick="showTab('money')">용돈</button>
+      <button id="tabWeek" onclick="showTab('week')">주간 설정</button>
+    </nav>
+  </header>
+
+  <section id="panelToday" class="panel on">
+    <div class="cards" id="todayCards"></div>
+    <div class="mood-box">
+      <h2>오늘의 기분</h2>
+      <div class="mood-sub" id="moodSub"></div>
+      <div id="moodList"></div>
+    </div>
+  </section>
+
+  <section id="panelMonth" class="panel">
+    <div class="cal-head">
+      <span class="cal-title" id="calTitle"></span>
+      <div class="cal-nav">
+        <button class="btn" onclick="moveMonth(0)">오늘</button>
+        <button class="btn" onclick="moveMonth(-1)">◀</button>
+        <button class="btn" onclick="moveMonth(1)">▶</button>
+      </div>
+    </div>
+    <div class="cal">
+      <div class="cal-grid">
+        <div class="dow sun">일</div><div class="dow">월</div><div class="dow">화</div>
+        <div class="dow">수</div><div class="dow">목</div><div class="dow">금</div><div class="dow sat">토</div>
+      </div>
+      <div class="cal-grid" id="calBody"></div>
+    </div>
+    <div class="legend" id="calLegend"></div>
+    <div class="hint">날짜를 누르면 그날의 정규 시간표를 확인하고 휴가·재택 같은 특별 일정을 추가할 수 있어요.</div>
+  </section>
+
+  <section id="panelMoney" class="panel">
+    <div class="kid-tabs" id="kidTabs"></div>
+
+    <div class="balance" id="balanceCard"></div>
+
+    <div class="money-form">
+      <div class="kind-toggle">
+        <button type="button" class="on" id="kindIn"  onclick="setKind('in')">➕ 받았어요</button>
+        <button type="button" class="" id="kindOut" onclick="setKind('out')">➖ 썼어요</button>
+      </div>
+      <div class="form-grid">
+        <input type="date" id="mDate">
+        <select id="mCat"></select>
+        <input type="text" id="mMemo" maxlength="20" placeholder="내용 (예: 학교 앞 문구점)">
+        <input type="number" id="mAmount" min="0" step="100" inputmode="numeric" placeholder="금액 (원)">
+        <button class="btn primary" id="mAddBtn">기록하기</button>
+      </div>
+    </div>
+
+    <div class="month-sum" id="monthSum"></div>
+    <div class="ledger" id="ledger"></div>
+  </section>
+
+  <section id="panelWeek" class="panel">
+    <div id="weekEditor"></div>
+    <div class="footer-bar">
+      <span class="saved" id="savedMsg">변경하면 자동으로 저장됩니다</span>
+      <button class="btn" onclick="exportJson()">백업 파일 저장</button>
+      <button class="btn" onclick="document.getElementById('importFile').click()">백업 불러오기</button>
+      <button class="btn" onclick="askReset()">전체 초기화</button>
+      <input type="file" id="importFile" accept="application/json" hidden onchange="importJson(this)">
+    </div>
+  </section>
+
+</div>
+
+<dialog id="dayDlg">
+  <h3 id="dayTitle"></h3>
+  <div class="dlg-sub" id="dayHoliday"></div>
+
+  <div class="sec-title">정규 시간표</div>
+  <div id="dayRegular"></div>
+
+  <div class="sec-title">특별 일정</div>
+  <div id="dayEvents"></div>
+  <div class="add-form">
+    <select id="addMember"></select>
+    <select id="addType"></select>
+    <input type="text" id="addMemo" maxlength="30" placeholder="메모 (선택)">
+    <button class="btn primary" id="addBtn">일정 추가</button>
+  </div>
+
+  <div class="row" style="margin-top:14px">
+    <button class="btn" onclick="document.getElementById('dayDlg').close()">닫기</button>
+  </div>
+</dialog>
+
+<dialog id="confirmDlg">
+  <p id="confirmText"></p>
+  <div class="row">
+    <button class="btn" onclick="document.getElementById('confirmDlg').close()">취소</button>
+    <button class="btn primary" id="confirmOk">확인</button>
+  </div>
+</dialog>
+
+<script>
+const MEMBERS = [
+  { key:'dad',   name:'아빠',  color:'var(--dad)',   goLabel:'출근', backLabel:'퇴근', role:'parent' },
+  { key:'mom',   name:'엄마',  color:'var(--mom)',   goLabel:'출근', backLabel:'퇴근', role:'parent' },
+  { key:'jun',   name:'준',    color:'var(--jun)',   goLabel:'등교', backLabel:'귀가', role:'kid' },
+  { key:'hajin', name:'하진',  color:'var(--hajin)', goLabel:'등교', backLabel:'귀가', role:'kid' },
+];
+/* 오늘의 기분 */
+const MOODS = [
+  { key:'good',  emoji:'😄', name:'컨디션 굿',   bg:'#dcfce7', fg:'#15803d' },
+  { key:'tired', emoji:'😴', name:'피곤함',      bg:'#e0e7ff', fg:'#4338ca' },
+  { key:'meh',   emoji:'😐', name:'그냥 그래',   bg:'#f1f5f9', fg:'#475569' },
+  { key:'angry', emoji:'😤', name:'건들지 마라', bg:'#ffe4e6', fg:'#be123c' },
+  { key:'sick',  emoji:'🤒', name:'아프다',      bg:'#fef3c7', fg:'#b45309' },
+];
+const moodOf = k => MOODS.find(m => m.key === k);
+
+/* 아빠·엄마 요일별 O/X 항목 */
+const PARENT_FLAGS = [
+  { key:'night',     head:'야근', badge:'야근',     icon:'🌙', on:'#6366f1', bg:'#e0e7ff', fg:'#4338ca' },
+  { key:'breakfast', head:'아침', badge:'아침식사', icon:'🍳', on:'#ea580c', bg:'#ffedd5', fg:'#c2410c' },
+  { key:'dinner',    head:'저녁', badge:'저녁식사', icon:'🍽️', on:'#0d9488', bg:'#ccfbf1', fg:'#0f766e' },
+];
+
+/* 아이별로 다니는 학원 목록 */
+const KID_ACADEMIES = {
+  jun:   ['아이픽', '케니스', '농구'],
+  hajin: ['아이픽', '케니스', '피아노'],
+};
+const acadList = kidKey => KID_ACADEMIES[kidKey] || [];
+const DAYS = [
+  { key:'mon', name:'월요일', short:'월' },
+  { key:'tue', name:'화요일', short:'화' },
+  { key:'wed', name:'수요일', short:'수' },
+  { key:'thu', name:'목요일', short:'목' },
+  { key:'fri', name:'금요일', short:'금' },
+  { key:'sat', name:'토요일', short:'토' },
+  { key:'sun', name:'일요일', short:'일' },
+];
+const EVENT_TYPES = [
+  { key:'vacation', name:'휴가',    bg:'#fee2e2', fg:'#b91c1c', dot:'#ef4444' },
+  { key:'home',     name:'재택',    bg:'#dbeafe', fg:'#1d4ed8', dot:'#3b82f6' },
+  { key:'trip',     name:'출장',    bg:'#fef3c7', fg:'#b45309', dot:'#f59e0b' },
+  { key:'school',   name:'학교행사', bg:'#d1fae5', fg:'#047857', dot:'#10b981' },
+  { key:'etc',      name:'기타',    bg:'#e9e9ee', fg:'#4b5563', dot:'#9ca3af' },
+];
+/* 날짜가 고정된 공휴일만 표시 (설날·추석·부처님오신날은 음력이라 자동 표시되지 않음) */
+const HOLIDAYS = {
+  '01-01':'신정', '03-01':'삼일절', '05-05':'어린이날', '06-06':'현충일',
+  '08-15':'광복절', '10-03':'개천절', '10-09':'한글날', '12-25':'성탄절',
+};
+/* 용돈기입장 */
+const KIDS = [
+  { key:'jun',   name:'준',   emoji:'🐯', color:'var(--jun)'   },
+  { key:'hajin', name:'하진', emoji:'🐰', color:'var(--hajin)' },
+];
+const CATS = {
+  in:  [ {k:'weekly',n:'용돈',   e:'💰'}, {k:'help',n:'심부름', e:'🧹'},
+         {k:'praise',n:'칭찬',   e:'⭐'}, {k:'gift',n:'선물·세뱃돈', e:'🎁'},
+         {k:'etc',  n:'기타',   e:'✨'} ],
+  out: [ {k:'snack', n:'간식',   e:'🍭'}, {k:'toy', n:'장난감', e:'🧸'},
+         {k:'study', n:'학용품', e:'✏️'}, {k:'book',n:'책',     e:'📚'},
+         {k:'save',  n:'저금',   e:'🐷'}, {k:'etc', n:'기타',   e:'🛒'} ],
+};
+const catOf = (kind, k) => CATS[kind].find(c => c.k === k) || CATS[kind][CATS[kind].length - 1];
+
+const STORE_KEY  = 'family-schedule-v1';
+const EVENTS_KEY = 'family-events-v1';
+const MONEY_KEY  = 'family-allowance-v1';
+const MOOD_KEY   = 'family-moods-v1';
+const WEEKDAYS = ['mon','tue','wed','thu','fri'];
+
+/* 특별 일정을 온 가족에게 한 번에 적용하기 위한 가상 구성원 */
+const ALL_MEMBER = { key:'all', name:'온가족', color:'var(--accent)', role:'all' };
+const memberOf = k => (k === 'all' ? ALL_MEMBER : MEMBERS.find(m => m.key === k));
+const typeOf   = k => EVENT_TYPES.find(t => t.key === k) || EVENT_TYPES[4];
+
+/* 기본값 */
+const blankSlot = () => ({ go:'', back:'', night:false, breakfast:false, dinner:false, academies:[] });
+const copySlot  = s => ({ ...s, academies:[...s.academies] });
+
+function blankData(){
+  const d = {};
+  for (const m of MEMBERS){
+    d[m.key] = {};
+    for (const day of DAYS) d[m.key][day.key] = blankSlot();
+  }
+  return d;
+}
+function seedData(){
+  const d = blankData();
+  const preset = {
+    dad:   { go:'07:30', back:'19:30' },
+    mom:   { go:'08:30', back:'18:00' },
+    jun:   { go:'08:10', back:'16:00' },
+    hajin: { go:'08:40', back:'15:00' },
+  };
+  for (const m of MEMBERS)
+    for (const day of WEEKDAYS)
+      d[m.key][day] = { ...blankSlot(), ...preset[m.key] };
+  return d;
+}
+
+/* 저장된 주간 데이터를 안전하게 병합 (예전 버전 데이터도 그대로 살림) */
+function mergeWeekly(raw){
+  const base = blankData();
+  for (const m of MEMBERS)
+    for (const day of DAYS){
+      const v = raw?.[m.key]?.[day.key];
+      if (v && typeof v === 'object'){
+        /* academy(단일 문자열) → academies(배열) 자동 변환 */
+        const picked = Array.isArray(v.academies) ? v.academies : (v.academy ? [v.academy] : []);
+        const slot = {
+          go:   v.go   || '',
+          back: v.back || '',
+          academies: acadList(m.key).filter(a => picked.includes(a)),
+        };
+        for (const f of PARENT_FLAGS) slot[f.key] = m.role === 'parent' && !!v[f.key];
+        base[m.key][day.key] = slot;
+      }
+    }
+  return base;
+}
+
+let data = load();
+let events = loadEvents();
+let money = loadMoney();
+let moods = loadMoods();
+
+/* events = { "2026-07-15": [ {id, member, type, memo} ] } */
+function cleanEvents(raw){
+  const out = {};
+  if (!raw || typeof raw !== 'object') return out;
+  for (const [date, list] of Object.entries(raw)){
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !Array.isArray(list)) continue;
+    const items = list
+      .filter(e => e && memberOf(e.member))
+      .map(e => ({
+        id: String(e.id ?? Math.random().toString(36).slice(2)),
+        member: e.member,
+        type: typeOf(e.type).key,
+        memo: String(e.memo || '').slice(0, 30),
+      }));
+    if (items.length) out[date] = items;
+  }
+  return out;
+}
+function loadEvents(){
+  try{ return cleanEvents(JSON.parse(localStorage.getItem(EVENTS_KEY))); }
+  catch(e){ return {}; }
+}
+function saveEvents(){ put(EVENTS_KEY, events); }
+
+/* money = { jun:[{id,date,kind,cat,memo,amount}], hajin:[...] } */
+function cleanMoney(raw){
+  const out = {};
+  for (const kid of KIDS){
+    const list = Array.isArray(raw?.[kid.key]) ? raw[kid.key] : [];
+    out[kid.key] = list
+      .filter(e => e && (e.kind === 'in' || e.kind === 'out')
+                && /^\d{4}-\d{2}-\d{2}$/.test(e.date) && Number.isFinite(Number(e.amount)))
+      .map(e => ({
+        id: String(e.id ?? Math.random().toString(36).slice(2)),
+        date: e.date,
+        kind: e.kind,
+        cat: catOf(e.kind, e.cat).k,
+        memo: String(e.memo || '').slice(0, 20),
+        amount: Math.max(0, Math.round(Number(e.amount))),
+      }));
+  }
+  return out;
+}
+function loadMoney(){
+  try{ return cleanMoney(JSON.parse(localStorage.getItem(MONEY_KEY))); }
+  catch(e){ return cleanMoney(null); }
+}
+function saveMoney(){ put(MONEY_KEY, money); }
+
+/* moods = { "2026-07-28": { dad:'good', jun:'tired' } } — 날짜별로 남아 매일 새로 시작한다 */
+function cleanMoods(raw){
+  const out = {};
+  if (!raw || typeof raw !== 'object') return out;
+  for (const [date, byMember] of Object.entries(raw)){
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !byMember || typeof byMember !== 'object') continue;
+    const day = {};
+    for (const m of MEMBERS)
+      if (moodOf(byMember[m.key])) day[m.key] = byMember[m.key];
+    if (Object.keys(day).length) out[date] = day;
+  }
+  return out;
+}
+function loadMoods(){
+  try{ return cleanMoods(JSON.parse(localStorage.getItem(MOOD_KEY))); }
+  catch(e){ return {}; }
+}
+function saveMoods(){ put(MOOD_KEY, moods); }
+
+function load(){
+  try{
+    const raw = localStorage.getItem(STORE_KEY);
+    if (!raw) return seedData();
+    return mergeWeekly(JSON.parse(raw));
+  }catch(e){
+    return seedData();
+  }
+}
+/* 저장이 막힌 환경(시크릿 창 등)에서도 화면이 멈추지 않도록 감싼다 */
+let storageOk = true;
+function put(key, value){
+  try{
+    localStorage.setItem(key, JSON.stringify(value));
+    flashSaved(true);
+  }catch(e){
+    storageOk = false;
+    flashSaved(false);
+  }
+}
+function save(){ put(STORE_KEY, data); }
+
+let savedTimer;
+function flashSaved(ok){
+  const el = document.getElementById('savedMsg');
+  if (!el) return;
+  el.textContent = ok ? '✓ 저장되었습니다' : '⚠ 이 브라우저에서는 저장할 수 없어요 (백업 파일을 이용하세요)';
+  el.style.color = ok ? 'var(--accent)' : '#ef4444';
+  clearTimeout(savedTimer);
+  savedTimer = setTimeout(()=>{
+    el.textContent = storageOk ? '변경하면 자동으로 저장됩니다' : '⚠ 저장이 불가능한 환경입니다 — 백업 파일로 보관하세요';
+    el.style.color = storageOk ? 'var(--muted)' : '#ef4444';
+  }, 2200);
+}
+
+/* ---------- 유틸 ---------- */
+const todayIdx = () => (new Date().getDay() + 6) % 7;   // 0=월 … 6=일
+const nowMin   = () => { const n=new Date(); return n.getHours()*60 + n.getMinutes(); };
+const toMin    = t => { if(!t) return null; const [h,m]=t.split(':').map(Number); return h*60+m; };
+const pad2     = n => String(n).padStart(2,'0');
+const ymd      = (y,m,d) => `${y}-${pad2(m+1)}-${pad2(d)}`;
+const ymdOf    = dt => ymd(dt.getFullYear(), dt.getMonth(), dt.getDate());
+const esc      = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+/* ---------- 오늘 화면 ---------- */
+function renderToday(){
+  const di = todayIdx(), day = DAYS[di], now = nowMin();
+  const dt = new Date();
+  document.getElementById('todayLabel').textContent =
+    `${dt.getMonth()+1}월 ${dt.getDate()}일 ${day.name}`;
+  const dateKey = ymdOf(dt);
+  const todayEvents = events[dateKey] || [];
+  const todayMoods = moods[dateKey] || {};
+
+  const cards = MEMBERS.map(m => {
+    const s = data[m.key][day.key];
+    const go = toMin(s.go), back = toMin(s.back);
+    const badges = [
+      ...PARENT_FLAGS.filter(f => s[f.key]).map(f =>
+        `<span class="chip" style="background:${f.bg};color:${f.fg}">${f.icon} ${f.badge}</span>`),
+      ...s.academies.map(a =>
+        `<span class="chip" style="background:#f3e8ff;color:#7e22ce">🎒 ${esc(a)}</span>`),
+      /* 'all' 은 온 가족 공통 일정이라 모든 카드에 표시된다 */
+      ...todayEvents.filter(e => e.member === m.key || e.member === 'all').map(e => {
+        const t = typeOf(e.type);
+        return `<span class="chip" style="background:${t.bg};color:${t.fg}">${
+          e.member === 'all' ? '👨‍👩‍👦‍👦 ' : ''}${t.name}${e.memo ? ' · ' + esc(e.memo) : ''}</span>`;
+      }),
+    ].filter(Boolean).join('');
+    let status = '일정 없음';
+    if (go === null && back === null)      status = '🏠 일정 없음';
+    else if (go !== null && now < go)      status = `⏰ ${m.goLabel} 전`;
+    else if (back !== null && now < back)  status = '🚶 외출 중';
+    else if (back !== null)                status = `🏠 ${m.backLabel} 완료`;
+    else                                   status = '🚶 외출 중';
+
+    const mood = moodOf(todayMoods[m.key]);
+
+    return `
+      <div class="card" style="--c:${m.color}">
+        <h3><span class="dot"></span>${m.name}${
+          mood ? `<span class="head-mood" title="${mood.name}">${mood.emoji}</span>` : ''}</h3>
+        <span class="status">${status}</span>
+        <div class="times">
+          <div class="time-box">
+            <small>${m.goLabel}</small>
+            <b class="${s.go?'':'none'}">${s.go || '—'}</b>
+          </div>
+          <div class="time-box">
+            <small>${m.backLabel}</small>
+            <b class="${s.back?'':'none'}">${s.back || '—'}</b>
+          </div>
+        </div>
+        ${badges ? `<div class="card-badges">${badges}</div>` : ''}
+      </div>`;
+  }).join('');
+  document.getElementById('todayCards').innerHTML = cards;
+
+  /* 오늘의 기분 */
+  const picked = MEMBERS.filter(m => todayMoods[m.key]).length;
+  document.getElementById('moodSub').textContent = picked === MEMBERS.length
+    ? '온 가족이 오늘 기분을 남겼어요 💛'
+    : `이모티콘을 눌러 오늘 기분을 남겨보세요 (${picked}/${MEMBERS.length}명)`;
+
+  document.getElementById('moodList').innerHTML = MEMBERS.map(m => `
+    <div class="mood-row" style="--c:${m.color}">
+      <span class="mood-name"><span class="dot"></span>${m.name}</span>
+      <div class="mood-opts">
+        ${MOODS.map(md => `
+          <button type="button" class="mood-btn ${todayMoods[m.key] === md.key ? 'on' : ''}"
+            style="--mb:${md.bg};--mf:${md.fg}"
+            onclick="setMood('${m.key}','${md.key}')">
+            <span class="em">${md.emoji}</span>${md.name}
+          </button>`).join('')}
+      </div>
+    </div>`).join('');
+}
+
+/* 같은 기분을 다시 누르면 선택 해제된다 */
+function setMood(mKey, moodKey){
+  const key = ymdOf(new Date());
+  const day = moods[key] || (moods[key] = {});
+  if (day[mKey] === moodKey) delete day[mKey];
+  else day[mKey] = moodKey;
+  if (!Object.keys(day).length) delete moods[key];
+  saveMoods();
+  renderToday();
+}
+
+/* ---------- 월간 달력 ---------- */
+let view = new Date();
+view.setDate(1);
+
+function moveMonth(step){
+  if (step === 0) { view = new Date(); view.setDate(1); }
+  else view = new Date(view.getFullYear(), view.getMonth() + step, 1);
+  renderMonth();
+}
+
+function renderMonth(){
+  const y = view.getFullYear(), mo = view.getMonth();
+  document.getElementById('calTitle').textContent = `${y}년 ${mo + 1}월`;
+
+  const firstDow = new Date(y, mo, 1).getDay();     // 0=일
+  const lastDate = new Date(y, mo + 1, 0).getDate();
+  const todayKey = ymdOf(new Date());
+  let html = '';
+
+  for (let i = 0; i < firstDow; i++) html += `<div class="cell blank"></div>`;
+
+  for (let d = 1; d <= lastDate; d++){
+    const key = ymd(y, mo, d);
+    const dow = new Date(y, mo, d).getDay();
+    const hol = HOLIDAYS[key.slice(5)];
+    const list = events[key] || [];
+    const shown = list.slice(0, 3);
+
+    const cls = ['cell'];
+    if (dow === 0) cls.push('sun');
+    if (dow === 6) cls.push('sat');
+    if (hol) cls.push('holiday');
+    if (key === todayKey) cls.push('today');
+
+    const chips = shown.map(e => {
+      const t = typeOf(e.type), m = memberOf(e.member);
+      const label = `${m.name} ${t.name}${e.memo ? ' · ' + e.memo : ''}`;
+      return `<span class="chip" style="background:${t.bg};color:${t.fg}" title="${esc(label)}"
+        >${m.name} ${t.name}</span>`;
+    }).join('');
+
+    html += `<div class="${cls.join(' ')}" onclick="openDay('${key}')">
+        <span class="num">${d}</span>
+        ${hol ? `<span class="hol">${hol}</span>` : ''}
+        ${chips}
+        ${list.length > 3 ? `<span class="more">+${list.length - 3}건</span>` : ''}
+      </div>`;
+  }
+
+  const trailing = (7 - ((firstDow + lastDate) % 7)) % 7;
+  for (let i = 0; i < trailing; i++) html += `<div class="cell blank"></div>`;
+
+  document.getElementById('calBody').innerHTML = html;
+  document.getElementById('calLegend').innerHTML = EVENT_TYPES
+    .map(t => `<span><i style="background:${t.dot}"></i>${t.name}</span>`).join('');
+}
+
+/* ---------- 날짜 상세 ---------- */
+let openedDate = null;
+
+function openDay(key){
+  openedDate = key;
+  const [y, mo, d] = key.split('-').map(Number);
+  const dt = new Date(y, mo - 1, d);
+  const di = (dt.getDay() + 6) % 7;
+  const hol = HOLIDAYS[key.slice(5)];
+
+  document.getElementById('dayTitle').textContent = `${mo}월 ${d}일 ${DAYS[di].name}`;
+  document.getElementById('dayHoliday').textContent = hol ? `🎌 ${hol}` : '';
+
+  document.getElementById('dayRegular').innerHTML = MEMBERS.map(m => {
+    const s = data[m.key][DAYS[di].key];
+    const txt = (s.go || s.back)
+      ? `${m.goLabel} ${s.go || '—'} · ${m.backLabel} ${s.back || '—'}`
+      : '일정 없음';
+    const tag = [
+      ...PARENT_FLAGS.filter(f => s[f.key]).map(f =>
+        `<span class="chip" style="background:${f.bg};color:${f.fg}">${f.icon} ${f.badge}</span>`),
+      ...s.academies.map(a =>
+        `<span class="chip" style="background:#f3e8ff;color:#7e22ce">🎒 ${esc(a)}</span>`),
+    ].join('');
+    return `<div class="reg-row" style="--c:${m.color}">
+        <span class="nm">${m.name}</span><span class="tm">${txt}</span>${tag}</div>`;
+  }).join('');
+
+  renderDayEvents();
+
+  document.getElementById('addMember').innerHTML =
+    `<option value="all">👨‍👩‍👦‍👦 온가족</option>` +
+    MEMBERS.map(m => `<option value="${m.key}"${m.key === 'dad' ? ' selected' : ''}>${m.name}</option>`).join('');
+  document.getElementById('addType').innerHTML =
+    EVENT_TYPES.map(t => `<option value="${t.key}">${t.name}</option>`).join('');
+  document.getElementById('addMemo').value = '';
+
+  document.getElementById('dayDlg').showModal();
+}
+
+function renderDayEvents(){
+  const list = events[openedDate] || [];
+  document.getElementById('dayEvents').innerHTML = list.length
+    ? list.map(e => {
+        const t = typeOf(e.type), m = memberOf(e.member);
+        return `<div class="ev-item" style="background:${t.bg};color:${t.fg}">
+            <span>${m.name} · ${t.name}</span>
+            ${e.memo ? `<span class="memo">${esc(e.memo)}</span>` : ''}
+            <button class="x" title="삭제" onclick="delEvent('${e.id}')">✕</button>
+          </div>`;
+      }).join('')
+    : `<div class="empty" style="font-size:13px">등록된 특별 일정이 없습니다.</div>`;
+}
+
+document.getElementById('addBtn').onclick = () => {
+  if (!openedDate) return;
+  const ev = {
+    id: Math.random().toString(36).slice(2),
+    member: document.getElementById('addMember').value,
+    type:   document.getElementById('addType').value,
+    memo:   document.getElementById('addMemo').value.trim().slice(0, 30),
+  };
+  (events[openedDate] ||= []).push(ev);
+  saveEvents();
+  document.getElementById('addMemo').value = '';
+  renderDayEvents(); renderMonth(); renderToday();
+};
+
+function delEvent(id){
+  events[openedDate] = (events[openedDate] || []).filter(e => e.id !== id);
+  if (!events[openedDate].length) delete events[openedDate];
+  saveEvents();
+  renderDayEvents(); renderMonth(); renderToday();
+}
+
+/* ---------- 용돈기입장 ---------- */
+let curKid = KIDS[0].key;
+let curKind = 'in';
+
+const won = n => n.toLocaleString('ko-KR') + '원';
+
+function setKid(k){ curKid = k; renderMoney(); }
+
+function setKind(k){
+  curKind = k;
+  document.getElementById('kindIn').classList.toggle('on', k === 'in');
+  document.getElementById('kindOut').classList.toggle('on', k === 'out');
+  document.getElementById('mCat').innerHTML =
+    CATS[k].map(c => `<option value="${c.k}">${c.e} ${c.n}</option>`).join('');
+  document.getElementById('mMemo').placeholder =
+    k === 'in' ? '내용 (예: 이번 주 용돈)' : '내용 (예: 학교 앞 문구점)';
+}
+
+function balanceOf(kidKey){
+  return money[kidKey].reduce((sum, e) => sum + (e.kind === 'in' ? e.amount : -e.amount), 0);
+}
+
+function renderMoney(){
+  const kid = KIDS.find(k => k.key === curKid);
+  const list = [...money[curKid]].sort((a, b) =>
+    a.date === b.date ? b.id.localeCompare(a.id) : b.date.localeCompare(a.date));
+
+  document.getElementById('kidTabs').innerHTML = KIDS.map(k =>
+    `<button class="${k.key === curKid ? 'on' : ''}" style="--c:${k.color}"
+       onclick="setKid('${k.key}')">${k.emoji} ${k.name}</button>`).join('');
+
+  const bal = balanceOf(curKid);
+  document.getElementById('balanceCard').style.setProperty('--c', kid.color);
+  document.getElementById('balanceCard').innerHTML = `
+    <div class="piggy">🐷</div>
+    <small>${kid.name}이의 남은 용돈</small>
+    <div class="amt ${bal < 0 ? 'minus' : ''}">${won(bal)}</div>`;
+
+  /* 이번 달 요약 */
+  const now = new Date();
+  const prefix = `${now.getFullYear()}-${pad2(now.getMonth() + 1)}`;
+  const mIn  = list.filter(e => e.date.startsWith(prefix) && e.kind === 'in')
+                   .reduce((s, e) => s + e.amount, 0);
+  const mOut = list.filter(e => e.date.startsWith(prefix) && e.kind === 'out')
+                   .reduce((s, e) => s + e.amount, 0);
+  document.getElementById('monthSum').innerHTML = `
+    <div class="sum-box in"><small>${now.getMonth() + 1}월에 받은 돈</small><b>+${won(mIn)}</b></div>
+    <div class="sum-box out"><small>${now.getMonth() + 1}월에 쓴 돈</small><b>−${won(mOut)}</b></div>`;
+
+  /* 내역 (날짜별 묶음) */
+  if (!list.length){
+    document.getElementById('ledger').innerHTML =
+      `<div class="led-empty">아직 기록이 없어요 🐷<br>위에서 받은 돈이나 쓴 돈을 적어보세요!</div>`;
+    return;
+  }
+  let html = '', lastDate = '';
+  for (const e of list){
+    if (e.date !== lastDate){
+      lastDate = e.date;
+      const [y, m, d] = e.date.split('-').map(Number);
+      const dw = DAYS[(new Date(y, m - 1, d).getDay() + 6) % 7].short;
+      html += `<div class="led-date">${m}월 ${d}일 (${dw})</div>`;
+    }
+    const c = catOf(e.kind, e.cat);
+    const tint = e.kind === 'in' ? '#d1fae5' : '#fee2e2';
+    html += `
+      <div class="led-row">
+        <span class="led-icon" style="background:${tint}">${c.e}</span>
+        <span class="led-txt">
+          <b>${e.memo ? esc(e.memo) : c.n}</b>
+          <small>${c.n}</small>
+        </span>
+        <span class="led-amt ${e.kind}">${e.kind === 'in' ? '+' : '−'}${won(e.amount)}</span>
+        <button class="led-del" title="삭제" onclick="delMoney('${e.id}')">✕</button>
+      </div>`;
+  }
+  document.getElementById('ledger').innerHTML = html;
+}
+
+document.getElementById('mAddBtn').onclick = () => {
+  const amtEl = document.getElementById('mAmount');
+  const amount = Math.round(Number(amtEl.value));
+  const date = document.getElementById('mDate').value;
+  if (!date)                       { alert('날짜를 골라주세요.'); return; }
+  if (!Number.isFinite(amount) || amount <= 0) { alert('금액을 숫자로 적어주세요.'); amtEl.focus(); return; }
+
+  money[curKid].push({
+    id: Math.random().toString(36).slice(2),
+    date, kind: curKind,
+    cat: document.getElementById('mCat').value,
+    memo: document.getElementById('mMemo').value.trim().slice(0, 20),
+    amount,
+  });
+  saveMoney();
+  amtEl.value = '';
+  document.getElementById('mMemo').value = '';
+  renderMoney();
+};
+
+function delMoney(id){
+  money[curKid] = money[curKid].filter(e => e.id !== id);
+  saveMoney();
+  renderMoney();
+}
+
+/* ---------- 주간 설정 ---------- */
+function renderWeek(){
+  const di = todayIdx();
+  document.getElementById('weekEditor').innerHTML = MEMBERS.map(m => `
+    <div class="member-block" style="--c:${m.color}">
+      <div class="member-head">
+        <span class="dot"></span>
+        <h3>${m.name}</h3>
+        <div class="tools">
+          <button class="btn" onclick="fillWeekdays('${m.key}')">월요일 → 평일 전체</button>
+          <button class="btn" onclick="clearMember('${m.key}')">비우기</button>
+        </div>
+      </div>
+      <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th></th>
+            <th>${m.goLabel} 시간</th>
+            <th>${m.backLabel} 시간</th>
+            ${m.role === 'parent'
+              ? PARENT_FLAGS.map(f => `<th>${f.head}</th>`).join('')
+              : '<th>학원</th>'}
+          </tr>
+        </thead>
+        <tbody>
+          ${DAYS.map((d,i) => {
+            const s = data[m.key][d.key];
+            const extra = m.role === 'parent'
+              ? PARENT_FLAGS.map(f => `<td><button type="button" class="ox ${s[f.key] ? 'on' : ''}"
+                   style="--ox:${f.on}" title="${f.badge}"
+                   onclick="toggleFlag('${m.key}','${d.key}','${f.key}')"
+                   >${s[f.key] ? 'O' : 'X'}</button></td>`).join('')
+              : `<td><div class="acad-wrap">${acadList(m.key).map(a =>
+                   `<button type="button" class="acad ${s.academies.includes(a) ? 'on' : ''}"
+                      onclick="toggleAcademy('${m.key}','${d.key}','${a}')">${a}</button>`).join('')}</div></td>`;
+            return `
+            <tr class="${i>=5?'weekend':''} ${i===di?'today':''}">
+              <td>${d.short}</td>
+              <td><input type="time" value="${s.go}"
+                    onchange="setTime('${m.key}','${d.key}','go',this.value)"></td>
+              <td><input type="time" value="${s.back}"
+                    onchange="setTime('${m.key}','${d.key}','back',this.value)"></td>
+              ${extra}
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+      </div>
+    </div>`).join('');
+}
+
+function setTime(mKey, dKey, field, value){
+  data[mKey][dKey][field] = value;
+  save();
+  renderToday();
+}
+function toggleFlag(mKey, dKey, field){
+  data[mKey][dKey][field] = !data[mKey][dKey][field];
+  save(); renderWeek(); renderToday();
+}
+function toggleAcademy(mKey, dKey, name){
+  const slot = data[mKey][dKey];
+  const set = new Set(slot.academies);
+  if (set.has(name)) set.delete(name); else set.add(name);
+  slot.academies = acadList(mKey).filter(a => set.has(a));   // 항상 같은 순서로 정렬
+  save(); renderWeek(); renderToday();
+}
+function fillWeekdays(mKey){
+  const src = data[mKey].mon;
+  for (const d of WEEKDAYS) data[mKey][d] = copySlot(src);
+  save(); renderWeek(); renderToday();
+}
+function clearMember(mKey){
+  for (const d of DAYS) data[mKey][d.key] = blankSlot();
+  save(); renderWeek(); renderToday();
+}
+
+/* ---------- 백업 / 초기화 ---------- */
+function exportJson(){
+  const payload = { version:4, weekly:data, events, money, moods };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type:'application/json' });
+  const a = document.createElement('a');
+  const d = new Date();
+  a.href = URL.createObjectURL(blob);
+  a.download = `가족스케줄_${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}.json`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+function importJson(input){
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try{
+      const parsed = JSON.parse(reader.result);
+      data   = mergeWeekly(parsed?.weekly || parsed);   // v1 백업(주간만) 호환
+      events = cleanEvents(parsed?.events);
+      money  = cleanMoney(parsed?.money);
+      moods  = cleanMoods(parsed?.moods);
+      save(); saveEvents(); saveMoney(); saveMoods();
+      renderWeek(); renderMonth(); renderMoney(); renderToday();
+    }catch(e){
+      alert('파일을 읽을 수 없습니다. 백업 파일이 맞는지 확인해 주세요.');
+    }
+  };
+  reader.readAsText(file);
+  input.value = '';
+}
+function askReset(){
+  const dlg = document.getElementById('confirmDlg');
+  document.getElementById('confirmText').textContent =
+    '주간 시간표가 기본값으로 돌아가고, 달력의 특별 일정도 모두 삭제됩니다. (용돈 기록은 지워지지 않습니다) 계속할까요?';
+  const ok = document.getElementById('confirmOk');
+  ok.onclick = () => {
+    data = seedData();
+    events = {};
+    moods = {};
+    save(); saveEvents(); saveMoods();
+    renderWeek(); renderMonth(); renderToday();
+    dlg.close();
+  };
+  dlg.showModal();
+}
+
+/* ---------- 탭 ---------- */
+function showTab(which){
+  for (const t of ['today','month','money','week']){
+    const on = t === which;
+    document.getElementById('panel' + t[0].toUpperCase() + t.slice(1)).classList.toggle('on', on);
+    document.getElementById('tab'   + t[0].toUpperCase() + t.slice(1)).classList.toggle('on', on);
+  }
+}
+
+document.getElementById('mDate').value = ymdOf(new Date());
+setKind('in');
+
+renderToday();
+renderMonth();
+renderMoney();
+renderWeek();
+setInterval(renderToday, 60000);   // 1분마다 상태 갱신
+</script>
+</body>
+</html>
