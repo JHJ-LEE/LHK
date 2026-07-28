@@ -430,8 +430,9 @@ window.LOCK = (function(){
     .wrap{min-height:100vh;min-height:100svh;display:flex;flex-direction:column}
     .panels{flex:1;min-height:0;display:flex;flex-direction:column}
     #panelToday.on{display:flex;flex-direction:column;flex:1;min-height:0}
-    /* minmax(0,1fr) 이라야 내용이 조금 길어져도 카드가 눌리며 맞춰진다 */
-    #panelToday .cards{flex:1;grid-template-rows:minmax(0,1fr) minmax(0,1fr);min-height:0}
+    /* 카드는 내용만큼만 차지하고, 남는 세로 공간은 아래 단어 칸이 가져간다 */
+    #panelToday .cards{flex:none;grid-template-rows:auto auto}
+    #panelToday .words{flex:1;min-height:0}
 
     .cards{grid-template-columns:1fr 1fr;gap:8px}
     .card{padding:8px;display:flex;flex-direction:column}
@@ -445,17 +446,16 @@ window.LOCK = (function(){
     .mood-btn{padding:3px 6px;border-radius:14px;font-size:0;gap:0}
     .mood-btn .em{font-size:16px}
 
-    /* 한자·영어 칸은 뜻과 예시를 한 줄에 붙여 낮게 만든다 */
-    .words{gap:7px;margin-top:7px}
-    .word-box{padding:6px 8px;border-radius:11px}
-    .word-label{font-size:9.5px;margin-bottom:3px}
-    .word-main{gap:7px}
-    .hanja-char{font-size:24px}
-    .hanja-info,.eng-info{flex-direction:row;align-items:baseline;gap:5px}
-    .hanja-info b{font-size:12px}
-    .eng-info b{font-size:14px}
-    .hanja-info small,.eng-info small{font-size:10px}
-    .speak{width:28px;height:28px;font-size:14px}
+    /* 카드에서 아낀 공간을 단어 칸이 받아 크게 보인다 */
+    .words{gap:8px;margin-top:8px}
+    .word-box{padding:9px 11px;border-radius:13px;display:flex;flex-direction:column}
+    .word-label{font-size:10px;margin-bottom:5px}
+    .word-main{flex:1;align-items:center;gap:9px}
+    .hanja-char{font-size:clamp(28px, 9vh, 46px)}
+    .hanja-info b{font-size:14px}
+    .eng-info b{font-size:clamp(17px, 4.6vh, 24px)}
+    .hanja-info small,.eng-info small{font-size:11.5px;white-space:normal}
+    .speak{width:36px;height:36px;font-size:16px}
     /* 시간 칸은 PC 처럼 낮게, 글자는 가운데로 */
     .times{gap:5px;flex:none}
     .time-box{padding:5px 4px;border-radius:9px;text-align:center}
@@ -463,8 +463,8 @@ window.LOCK = (function(){
     .time-edit{font-size:18px;letter-spacing:-.7px;text-align:center}
     .card-badges{margin-top:5px;padding-top:5px;gap:3px}
     .card-badges .chip{font-size:9.5px;padding:1px 4px}
-    /* 남는 공간은 아래로 몰아 입력칸을 카드 바닥에 붙인다 */
-    .say{margin-top:auto;padding-top:6px;gap:4px;flex:none}
+    /* 카드 안에는 빈 공간을 두지 않는다 */
+    .say{margin-top:0;padding-top:6px;gap:4px;flex:none}
     .say-icon{font-size:10px}
     .say-input{font-size:11px;padding:4px 6px;border-radius:8px}
     th:first-child,td:first-child{width:46px;font-size:12px}
@@ -508,8 +508,11 @@ window.LOCK = (function(){
     .card-badges .chip{font-size:9px;padding:0 3px}
     .say{padding-top:3px}
     .say-input{font-size:10px;padding:2px 5px}
-    .word-box{padding:5px 7px}
-    .hanja-char{font-size:21px}
+    .word-box{padding:7px 9px}
+    .word-label{font-size:9.5px;margin-bottom:3px}
+    .hanja-info b{font-size:12.5px}
+    .hanja-info small,.eng-info small{font-size:10.5px}
+    .speak{width:32px;height:32px;font-size:15px}
   }
 </style>
 </head>
