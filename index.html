@@ -367,9 +367,6 @@ window.LOCK = (function(){
   .mchip i{display:block;font-size:10px;font-style:normal;font-weight:600;color:var(--c);
     opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .more{font-size:10px;color:var(--muted);padding-left:3px}
-  .legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:12px;padding-left:2px}
-  .legend span{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:5px}
-  .legend i{width:9px;height:9px;border-radius:50%}
   .ev-time{font-variant-numeric:tabular-nums;flex:none}
   .hint{font-size:12px;color:var(--muted);margin-top:10px}
 
@@ -802,7 +799,6 @@ window.LOCK = (function(){
       </div>
       <div class="cal-grid" id="calBody"></div>
     </div>
-    <div class="legend" id="calLegend"></div>
     <div class="hint">날짜를 누르면 그날 일정을 넣을 수 있어요. 시간은 필요할 때만 적으면 됩니다.</div>
   </section>
 
@@ -1234,13 +1230,25 @@ function cleanEvents(raw){
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !Array.isArray(list)) continue;
     const items = list
       .filter(e => e && memberOf(e.member))
-      .map(e => ({
-        id: String(e.id ?? Math.random().toString(36).slice(2)),
-        member: e.member,
-        type: typeOf(e.type).key,
-        time: /^\d{2}:\d{2}$/.test(e.time) ? e.time : '',   // 시간은 필요할 때만
-        memo: String(e.memo || '').slice(0, 30),
-      }));
+      .map(e => {
+        let time = /^\d{2}:\d{2}$/.test(e.time) ? e.time : '';   // 시간은 필요할 때만
+        let memo = String(e.memo || '').slice(0, 30);
+        /* 시간 칸이 생기기 전에 메모 앞에 적어둔 시간은 시간 칸으로 옮긴다
+           (예: "14:00 대전 출장" → 14:00 / 대전 출장) */
+        if (!time){
+          const m = memo.match(/^\s*(\d{1,2})\s*[:.]\s*(\d{2})\s*(.*)$/);
+          if (m && +m[1] <= 23 && +m[2] <= 59){
+            time = String(+m[1]).padStart(2, '0') + ':' + m[2];
+            memo = m[3].trim();
+          }
+        }
+        return {
+          id: String(e.id ?? Math.random().toString(36).slice(2)),
+          member: e.member,
+          type: typeOf(e.type).key,
+          time, memo,
+        };
+      });
     if (items.length) out[date] = items;
   }
   return out;
@@ -1802,8 +1810,6 @@ function renderMonth(){
   for (let i = 0; i < trailing; i++) html += `<div class="cell blank"></div>`;
 
   document.getElementById('calBody').innerHTML = html;
-  document.getElementById('calLegend').innerHTML = MEMBERS
-    .map(m => `<span><i style="background:${m.color}"></i>${m.name}</span>`).join('');
 }
 
 /* 시간이 있는 일정을 앞에, 시간 없는 것은 뒤에 */
