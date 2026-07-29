@@ -29,11 +29,20 @@ window.LOCK = (function(){
     return h.toString(36);
   }
   const KEY = 'family-unlock-v1';
-  const WANT = '1h1dtow';
-  let unlocked = false;
-  try { unlocked = localStorage.getItem(KEY) === WANT; } catch (e) {}
-  if (!unlocked) document.documentElement.classList.add('locked');
-  return { KEY, WANT, hash };
+  const ADMIN = 'blxhnu';    // 관리자 — 공지사항을 고칠 수 있다
+  const USER  = '1h1dtow';   // 일반 이용자 — 보기만 한다
+  let saved = null;
+  try { saved = localStorage.getItem(KEY); } catch (e) {}
+
+  const root = document.documentElement;
+  if (saved !== ADMIN && saved !== USER) root.classList.add('locked');
+  if (saved === ADMIN) root.classList.add('admin');
+
+  return {
+    KEY, ADMIN, USER, hash,
+    roleOf: code => (code === ADMIN ? 'admin' : code === USER ? 'user' : null),
+    isAdmin: () => root.classList.contains('admin'),
+  };
 })();
 </script>
 <style>
@@ -1291,26 +1300,47 @@ function renderNotice(){
     ta.focus();
     ta.setSelectionRange(ta.value.length, ta.value.length);
   } else {
+    /* 공지는 관리자만 고칠 수 있다. 일반 이용자에게는 읽기 전용으로 보인다. */
+    const admin = LOCK.isAdmin();
     box.innerHTML = `
-      <div class="notice-body" onclick="startNoticeEdit()">
+      <div class="notice-body" ${admin ? 'onclick="startNoticeEdit()"' : ''}>
         <span class="notice-title">오늘의 공지사항</span>
         <div class="notice-text ${notice ? '' : 'blank'}"
-          >${notice ? esc(notice) : '눌러서 입력하세요'}</div>
+          >${notice ? esc(notice) : (admin ? '눌러서 입력하세요' : '아직 공지가 없어요')}</div>
       </div>
       <div class="notice-tools">
-        <button class="btn" onclick="startNoticeEdit()">${notice ? '수정' : '입력'}</button>
-        ${notice ? `<button class="btn" onclick="clearNotice()">지우기</button>` : ''}
+        ${admin
+          ? `<button class="btn" onclick="startNoticeEdit()">${notice ? '수정' : '입력'}</button>
+             ${notice ? `<button class="btn" onclick="clearNotice()">지우기</button>` : ''}`
+          : `<button class="btn" title="관리자만 공지를 고칠 수 있어요"
+               onclick="askAdmin()">🔒</button>`}
       </div>`;
   }
 }
-function startNoticeEdit(){ noticeEditing = true;  renderNotice(); }
+
+/* 일반 이용자가 관리자 비밀번호를 넣어 권한을 올릴 수 있게 한다 */
+function askAdmin(){
+  document.documentElement.classList.add('locked');
+  const msg = document.getElementById('lockMsg');
+  msg.textContent = '공지를 고치려면 관리자 비밀번호를 입력하세요';
+  msg.classList.remove('err');
+  setTimeout(() => document.getElementById('lockInput').focus(), 60);
+}
+
+function startNoticeEdit(){
+  if (!LOCK.isAdmin()) return;
+  noticeEditing = true;
+  renderNotice();
+}
 function cancelNoticeEdit(){ noticeEditing = false; renderNotice(); }
 function saveNoticeEdit(){
+  if (!LOCK.isAdmin()) return;
   notice = document.getElementById('noticeInput').value.trim().slice(0, 500);
   noticeEditing = false;
   saveNotice(); renderNotice();
 }
 function clearNotice(){
+  if (!LOCK.isAdmin()) return;
   notice = '';
   saveNotice(); renderNotice();
 }
@@ -1880,11 +1910,16 @@ setKind('in');
     msg.classList.remove('err');
     if (v.length < 6) return;
 
-    if (LOCK.hash(v) === LOCK.WANT){
-      try { localStorage.setItem(LOCK.KEY, LOCK.WANT); } catch (e) {}
+    const code = LOCK.hash(v);
+    const role = LOCK.roleOf(code);
+    if (role){
+      try { localStorage.setItem(LOCK.KEY, code); } catch (e) {}
       document.documentElement.classList.remove('locked');
+      document.documentElement.classList.toggle('admin', role === 'admin');
       input.value = '';
       input.blur();
+      msg.textContent = '이 기기에서는 처음 한 번만 입력하면 됩니다';
+      renderNotice();                   // 권한에 따라 수정 버튼이 달라진다
       renderToday();                    // 잠금 중 멈춰 있던 화면을 새로 맞춘다
     } else {
       box.classList.add('shake');
