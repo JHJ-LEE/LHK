@@ -1764,11 +1764,13 @@ function renderMonth(){
     if (hol) cls.push('holiday');
     if (key === todayKey) cls.push('today');
 
+    /* 종류는 색으로 알 수 있으므로 칸에는 메모를 보여준다.
+       메모가 없을 때만 종류 이름을 쓴다. 자세한 내용은 눌렀을 때 뜬다. */
     const chips = shown.map(e => {
       const t = typeOf(e.type), m = memberOf(e.member);
       const label = `${m.name} ${t.name}${e.memo ? ' · ' + e.memo : ''}`;
       return `<span class="chip" style="background:${t.bg};color:${t.fg}" title="${esc(label)}"
-        >${m.name} ${t.name}</span>`;
+        >${m.name} ${esc(e.memo || t.name)}</span>`;
     }).join('');
 
     html += `<div class="${cls.join(' ')}" onclick="openDay('${key}')">
