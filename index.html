@@ -431,6 +431,15 @@ window.LOCK = (function(){
     border:1px solid var(--line);background:var(--bg);color:var(--text);
   }
   .receipt-form #rAmount{font-weight:800;text-align:right;font-variant-numeric:tabular-nums}
+  .rcand{display:flex;gap:6px;flex-wrap:wrap;margin-top:-3px}
+  .rcand:empty{display:none}
+  .rcand button{
+    border:1px solid var(--line);background:var(--bg);color:var(--muted);font:inherit;
+    font-size:12.5px;font-weight:700;padding:5px 10px;border-radius:20px;cursor:pointer;
+    font-variant-numeric:tabular-nums;
+  }
+  .rcand button:hover{border-color:var(--accent);color:var(--text)}
+  .rcand button.on{background:var(--accent);border-color:var(--accent);color:#fff}
   .receipt-form input:focus,.receipt-form select:focus{
     outline:2px solid var(--accent);outline-offset:-1px;border-color:transparent}
 
@@ -726,6 +735,7 @@ window.LOCK = (function(){
       <label>금액
         <input type="number" id="rAmount" min="0" step="10" inputmode="numeric">
       </label>
+      <div class="rcand" id="rCand"></div>
       <label>분류
         <select id="rCat"></select>
       </label>
@@ -1638,22 +1648,80 @@ function chooseReceipt(){
   document.getElementById('receiptFile').click();
 }
 
-/* 영수증에서 읽은 글자 중 결제 금액으로 보이는 값을 고른다.
-   '합계' 같은 낱말이 있는 줄을 먼저 보고, 없으면 가장 큰 금액을 쓴다. */
-function pickAmount(text){
-  const KEY = /(합\s*계|총\s*액|총\s*합|결\s*제|판매\s*금액|받을\s*금액|청\s*구|total|amount)/i;
-  const numbers = s => (String(s).match(/\d{1,3}(?:[,.\s]\d{3})+|\d{3,7}/g) || [])
-    .map(x => Number(x.replace(/\D/g, '')))
-    .filter(n => n >= 100 && n <= 2000000);
+/* 영수증에서 결제 금액을 골라낸다.
+   승인번호·사업자번호·전화번호처럼 금액이 아닌 숫자가 많아, 큰 값을 고르는
+   방식으로는 자주 틀린다. 줄과 숫자의 생김새에 점수를 매겨 판단한다. */
+const AMOUNT_KEYS = /(합\s*계|총\s*액|총\s*합|결\s*제\s*금\s*액|판\s*매\s*금\s*액|청\s*구\s*금\s*액|총\s*구\s*매|매\s*출|total|amount)/i;
+/* 금액이 아니라 번호가 적히는 줄 */
+const NOISE_KEYS = /(승\s*인|가\s*맹|사\s*업\s*자|등\s*록|전\s*화|tel|카\s*드\s*번\s*호|일\s*련|거\s*래\s*번\s*호|단\s*말|pos|주\s*소|대\s*표|바\s*코\s*드|유\s*효|할\s*부|회\s*원|번\s*호|no\.)/i;
+/* 결제 금액과 헷갈리기 쉬운 다른 금액이 적히는 줄 */
+const OTHER_KEYS = /(거\s*스\s*름|잔\s*돈|받\s*은|현\s*금|신\s*용|체\s*크|봉\s*사\s*료|부\s*가|과\s*세|면\s*세|할\s*인|쿠\s*폰|적\s*립|포\s*인\s*트|잔\s*액)/i;
 
-  const lines = String(text).split(/\r?\n/);
-  for (const line of lines){
-    if (!KEY.test(line)) continue;
-    const found = numbers(line);
-    if (found.length) return Math.max(...found);
+function candidatesIn(line){
+  const out = [];
+  const re = /(\d{1,3}(?:,\d{3})+|\d{2,10})(\s*원)?/g;
+  let m;
+  while ((m = re.exec(line)) !== null){
+    const raw = m[1];
+    const digits = raw.replace(/\D/g, '');
+    const before = line[m.index - 1] || '';
+    const after  = line[m.index + m[0].length] || '';
+    out.push({
+      value: Number(digits),
+      len: digits.length,
+      comma: raw.includes(','),
+      won: !!m[2],
+      /* 앞뒤에 숫자나 하이픈이 붙어 있으면 더 긴 번호의 일부다 (123-45-67890) */
+      glued: /[\d\-*/]/.test(before) || /[\d\-*/]/.test(after),
+    });
   }
-  const all = lines.flatMap(numbers);
-  return all.length ? Math.max(...all) : null;
+  return out;
+}
+
+/* 그럴듯한 순서로 후보를 돌려준다 */
+function amountCandidates(text){
+  const lines = String(text).split(/\r?\n/);
+  const found = [];
+
+  lines.forEach((line, i) => {
+    const prev = lines[i - 1] || '';
+    /* '합계' 만 찍히고 숫자는 다음 줄에 오는 영수증이 많다 */
+    const carried = AMOUNT_KEYS.test(prev) && candidatesIn(prev).length === 0;
+
+    for (const c of candidatesIn(line)){
+      if (c.value < 100 || c.value > 2000000) continue;
+      let s = 0;
+      if (AMOUNT_KEYS.test(line)) s += 60;
+      if (carried)               s += 45;
+      if (NOISE_KEYS.test(line)) s -= 80;
+      if (OTHER_KEYS.test(line)) s -= 55;
+      if (c.comma)               s += 25;
+      if (c.won)                 s += 20;
+      if (c.glued)               s -= 60;
+      if (c.len >= 8)            s -= 70;
+      else if (c.len === 7)      s -= 20;
+      if (c.value % 10 === 0)    s += 8;
+      if (c.value > 300000)      s -= 15;
+      /* 번호로 보이는 숫자는 후보에서 아예 뺀다.
+         읽지 못했다고 알리는 편이, 엉뚱한 값을 채워 넣는 것보다 낫다. */
+      if (s <= -40) continue;
+      found.push({ value: c.value, score: s });
+    }
+  });
+
+  /* 같은 금액이 여러 줄에 나오면 가장 높은 점수만 남긴다 */
+  const best = new Map();
+  for (const f of found){
+    if (!best.has(f.value) || best.get(f.value) < f.score) best.set(f.value, f.score);
+  }
+  return [...best.entries()]
+    .map(([value, score]) => ({ value, score }))
+    .sort((a, b) => (b.score - a.score) || (b.value - a.value));
+}
+
+function pickAmount(text){
+  const list = amountCandidates(text);
+  return list.length ? list[0].value : null;
 }
 
 /* 사진이 크면 인식이 느려지므로 가로 1600px 이하로 줄인다 */
@@ -1700,11 +1768,16 @@ async function readReceipt(input){
     const { createWorker } = await import('https://cdn.jsdelivr.net/npm/tesseract.js@5/+esm');
     if (!receiptWorker) receiptWorker = await createWorker(['kor', 'eng']);
     const { data } = await receiptWorker.recognize(blob);
-    amount = pickAmount(data.text);
+    const list = amountCandidates(data.text).slice(0, 4);
+    amount = list.length ? list[0].value : null;
+    showCandidates(list);
     state.textContent = amount
-      ? '읽은 금액이 맞는지 확인하고 고쳐주세요'
+      ? (list.length > 1
+          ? '금액이 다르면 아래에서 골라주세요'
+          : '읽은 금액이 맞는지 확인해주세요')
       : '금액을 읽지 못했어요. 직접 적어주세요';
   }catch(err){
+    showCandidates([]);
     state.textContent = '사진에서 글자를 읽지 못했어요. 금액을 직접 적어주세요';
   }
 
@@ -1716,6 +1789,21 @@ async function readReceipt(input){
   form.hidden = false;
   saveBtn.hidden = false;
   if (amount === null) document.getElementById('rAmount').focus();
+}
+
+/* 잘못 고른 경우를 대비해 다른 후보도 눌러서 바꿀 수 있게 한다 */
+function showCandidates(list){
+  const box = document.getElementById('rCand');
+  box.innerHTML = (list.length > 1)
+    ? list.map((c, i) =>
+        `<button type="button" class="${i === 0 ? 'on' : ''}"
+           onclick="useCandidate(${c.value}, this)">${won(c.value)}</button>`).join('')
+    : '';
+}
+function useCandidate(value, btn){
+  document.getElementById('rAmount').value = value;
+  for (const b of document.querySelectorAll('#rCand button')) b.classList.remove('on');
+  btn.classList.add('on');
 }
 
 function saveReceipt(){
