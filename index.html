@@ -273,27 +273,29 @@ window.LOCK = (function(){
   .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
 
   .table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
-  table{width:100%;border-collapse:collapse;min-width:320px}
+  /* 칸을 억지로 좁히지 않는다. 한 요일이 반드시 한 줄에 들어가고,
+     화면보다 넓어지면 표 안에서 좌우로 넘겨 본다. */
+  table{width:max-content;min-width:100%;border-collapse:collapse}
+  th,td{white-space:nowrap}
   th,td{padding:6px 4px;text-align:center}
   th{font-size:12px;color:var(--muted);font-weight:600}
   th:first-child,td:first-child{text-align:left;width:64px;font-size:13px;color:var(--muted)}
   tr.weekend th, tr.weekend td:first-child{color:#ef4444}
   tr.today{background:color-mix(in srgb,var(--accent) 8%,transparent)}
   tr.today td:first-child{font-weight:700;color:var(--accent)}
-  input[type=time]{
-    width:100%;min-width:104px;font:inherit;font-size:14px;font-variant-numeric:tabular-nums;
-    padding:7px 8px;border:1px solid var(--line);border-radius:9px;
-    background:var(--bg);color:var(--text);text-align:center;
+  /* 주간 설정 표의 시간칸 — 오늘 화면과 같은 방식으로 쳐서 넣는다 */
+  .time-edit.wk{
+    width:64px;font-size:14px;font-weight:600;letter-spacing:0;text-align:center;
+    padding:7px 4px;border:1px solid var(--line);border-radius:9px;background:var(--bg);
   }
-  input[type=time]:focus{outline:2px solid var(--accent);outline-offset:-1px;border-color:transparent}
-  input[type=time]:invalid{box-shadow:none}
+  .time-edit.wk:focus{outline:2px solid var(--accent);outline-offset:-1px;border-color:transparent}
   .ox{
     width:100%;max-width:54px;border:1px solid var(--line);background:var(--bg);color:var(--muted);
     font:inherit;font-size:14px;font-weight:800;padding:7px 0;border-radius:9px;cursor:pointer;transition:.15s;
   }
   .ox:hover{border-color:var(--ox,var(--muted))}
   .ox.on{background:var(--ox,#6366f1);border-color:var(--ox,#6366f1);color:#fff}
-  .acad-wrap{display:flex;flex-wrap:wrap;gap:4px;justify-content:center;min-width:96px}
+  .acad-wrap{display:flex;flex-wrap:nowrap;gap:4px;justify-content:center}
   .acad{
     border:1px solid var(--line);background:var(--bg);color:var(--muted);font:inherit;
     font-size:11px;font-weight:700;padding:5px 7px;border-radius:7px;cursor:pointer;transition:.15s;
@@ -531,12 +533,14 @@ window.LOCK = (function(){
     .say-icon{font-size:10px;line-height:1.5}
     .say-input{font-size:11px;padding:4px 6px;border-radius:8px;line-height:1.35}
     th:first-child,td:first-child{width:46px;font-size:12px}
-    input[type=time]{min-width:0;font-size:13px;padding:6px 2px}
-    .acad-wrap{min-width:78px;gap:3px}
-    .acad{font-size:10px;padding:4px 5px}
-    .ox{font-size:12px;padding:6px 0;max-width:40px}
-    th,td{padding:5px 2px}
-    th{font-size:11px}
+    /* 엄마 카드는 항목이 여섯 개라 가장 빡빡하다. 여기에 맞춰 폭을 잡는다 */
+    .time-edit.wk{width:54px;font-size:12.5px;padding:6px 1px}
+    .acad-wrap{gap:3px}
+    .acad{font-size:10px;padding:4px 4px}
+    .ox{font-size:12px;padding:6px 0;max-width:30px}
+    th,td{padding:5px 1px}
+    th:first-child,td:first-child{width:22px}
+    th{font-size:10.5px}
     .balance .amt{font-size:30px}
     .form-grid{grid-template-columns:1fr}
     .cell{min-height:66px;padding:3px}
@@ -809,8 +813,10 @@ window.SUPABASE_CONFIG = {
 
 <script>
 const MEMBERS = [
-  { key:'dad',   name:'아빠',  color:'var(--dad)',   goLabel:'출근', backLabel:'퇴근', role:'parent' },
-  { key:'mom',   name:'엄마',  color:'var(--mom)',   goLabel:'출근', backLabel:'퇴근', role:'parent' },
+  { key:'dad',   name:'아빠',  color:'var(--dad)',   goLabel:'출근', backLabel:'퇴근', role:'parent',
+    flags:['night','breakfast','dinner'] },
+  { key:'mom',   name:'엄마',  color:'var(--mom)',   goLabel:'출근', backLabel:'퇴근', role:'parent',
+    flags:['night','breakfast','dinner','boxing'] },
   { key:'jun',   name:'준',    color:'var(--jun)',   goLabel:'등교', backLabel:'귀가', role:'kid' },
   { key:'hajin', name:'하진',  color:'var(--hajin)', goLabel:'등교', backLabel:'귀가', role:'kid' },
 ];
@@ -908,7 +914,12 @@ const PARENT_FLAGS = [
   { key:'night',     head:'야근', badge:'야근',     icon:'🌙', on:'#6366f1', bg:'#e0e7ff', fg:'#4338ca' },
   { key:'breakfast', head:'아침당번', badge:'아침당번', icon:'🍳', on:'#ea580c', bg:'#ffedd5', fg:'#c2410c' },
   { key:'dinner',    head:'저녁당번', badge:'저녁당번', icon:'🍽️', on:'#0d9488', bg:'#ccfbf1', fg:'#0f766e' },
+  { key:'boxing',    head:'권투',     badge:'권투',     icon:'🥊', on:'#db2777', bg:'#fce7f3', fg:'#be185d' },
 ];
+/* 항목은 구성원마다 다르다 (권투는 엄마만) */
+const flagsOf = m => (m.flags || [])
+  .map(k => PARENT_FLAGS.find(f => f.key === k))
+  .filter(Boolean);
 
 /* 아이별로 다니는 학원 목록 */
 const KID_ACADEMIES = {
@@ -959,6 +970,9 @@ const MOOD_KEY   = 'family-moods-v1';
 const NOTICE_KEY = 'family-notice-v1';
 const SAYS_KEY   = 'family-says-v1';
 const WEEKDAYS = ['mon','tue','wed','thu','fri'];
+/* 주간 설정 표에는 평일만 보여준다. 자료 자체는 토·일도 그대로 두어
+   주말에 오늘 화면이 깨지지 않게 한다. */
+const EDIT_DAYS = DAYS.filter(d => WEEKDAYS.includes(d.key));
 
 /* 특별 일정을 온 가족에게 한 번에 적용하기 위한 가상 구성원 */
 const ALL_MEMBER = { key:'all', name:'온가족', color:'var(--accent)', role:'all' };
@@ -966,7 +980,8 @@ const memberOf = k => (k === 'all' ? ALL_MEMBER : MEMBERS.find(m => m.key === k)
 const typeOf   = k => EVENT_TYPES.find(t => t.key === k) || EVENT_TYPES[4];
 
 /* 기본값 */
-const blankSlot = () => ({ go:'', back:'', night:false, breakfast:false, dinner:false, academies:[] });
+const blankSlot = () =>
+  ({ go:'', back:'', night:false, breakfast:false, dinner:false, boxing:false, academies:[] });
 const copySlot  = s => ({ ...s, academies:[...s.academies] });
 
 function blankData(){
@@ -1005,7 +1020,8 @@ function mergeWeekly(raw){
           back: v.back || '',
           academies: acadList(m.key).filter(a => picked.includes(a)),
         };
-        for (const f of PARENT_FLAGS) slot[f.key] = m.role === 'parent' && !!v[f.key];
+        for (const f of PARENT_FLAGS) slot[f.key] = false;
+        for (const f of flagsOf(m))   slot[f.key] = !!v[f.key];
         base[m.key][day.key] = slot;
       }
     }
@@ -1245,7 +1261,7 @@ function renderToday(){
     const s = data[m.key][day.key];
     const go = toMin(s.go), back = toMin(s.back);
     const badges = [
-      ...PARENT_FLAGS.filter(f => s[f.key]).map(f =>
+      ...flagsOf(m).filter(f => s[f.key]).map(f =>
         `<span class="chip" style="background:${f.bg};color:${f.fg}">${f.icon} ${f.badge}</span>`),
       ...s.academies.map(a =>
         `<span class="chip" style="background:#f3e8ff;color:#7e22ce">🎒 ${esc(a)}</span>`),
@@ -1558,7 +1574,7 @@ function openDay(key){
       ? `${m.goLabel} ${s.go || '—'} · ${m.backLabel} ${s.back || '—'}`
       : '일정 없음';
     const tag = [
-      ...PARENT_FLAGS.filter(f => s[f.key]).map(f =>
+      ...flagsOf(m).filter(f => s[f.key]).map(f =>
         `<span class="chip" style="background:${f.bg};color:${f.fg}">${f.icon} ${f.badge}</span>`),
       ...s.academies.map(a =>
         `<span class="chip" style="background:#f3e8ff;color:#7e22ce">🎒 ${esc(a)}</span>`),
@@ -1985,15 +2001,15 @@ function renderWeek(){
             <th>${m.goLabel} 시간</th>
             <th>${m.backLabel} 시간</th>
             ${m.role === 'parent'
-              ? PARENT_FLAGS.map(f => `<th>${f.head}</th>`).join('')
+              ? flagsOf(m).map(f => `<th>${f.head}</th>`).join('')
               : '<th>학원</th>'}
           </tr>
         </thead>
         <tbody>
-          ${DAYS.map((d,i) => {
+          ${EDIT_DAYS.map((d,i) => {
             const s = data[m.key][d.key];
             const extra = m.role === 'parent'
-              ? PARENT_FLAGS.map(f => `<td><button type="button" class="ox ${s[f.key] ? 'on' : ''}"
+              ? flagsOf(m).map(f => `<td><button type="button" class="ox ${s[f.key] ? 'on' : ''}"
                    style="--ox:${f.on}" title="${f.badge}"
                    onclick="toggleFlag('${m.key}','${d.key}','${f.key}')"
                    >${s[f.key] ? 'O' : 'X'}</button></td>`).join('')
@@ -2003,10 +2019,14 @@ function renderWeek(){
             return `
             <tr class="${i>=5?'weekend':''} ${i===di?'today':''}">
               <td>${d.short}</td>
-              <td><input type="time" value="${s.go}"
-                    onchange="setTime('${m.key}','${d.key}','go',this.value)"></td>
-              <td><input type="time" value="${s.back}"
-                    onchange="setTime('${m.key}','${d.key}','back',this.value)"></td>
+              <td><input type="text" class="time-edit wk" inputmode="numeric" maxlength="5"
+                    value="${s.go}" placeholder="--:--" onfocus="this.select()"
+                    aria-label="${m.name} ${d.name} ${m.goLabel} 시간"
+                    onchange="setWeekTime('${m.key}','${d.key}','go',this.value,this)"></td>
+              <td><input type="text" class="time-edit wk" inputmode="numeric" maxlength="5"
+                    value="${s.back}" placeholder="--:--" onfocus="this.select()"
+                    aria-label="${m.name} ${d.name} ${m.backLabel} 시간"
+                    onchange="setWeekTime('${m.key}','${d.key}','back',this.value,this)"></td>
               ${extra}
             </tr>`;
           }).join('')}
@@ -2018,6 +2038,21 @@ function renderWeek(){
 
 function setTime(mKey, dKey, field, value){
   data[mKey][dKey][field] = value;
+  save();
+  renderToday();
+}
+
+/* 주간 설정에서도 오늘 화면처럼 편한 대로 쳐서 넣는다 */
+function setWeekTime(mKey, dKey, field, raw, el){
+  const v = parseTime(raw);
+  if (v === null){
+    el.value = data[mKey][dKey][field] || '';
+    el.classList.add('bad');
+    setTimeout(() => el.classList.remove('bad'), 900);
+    return;
+  }
+  data[mKey][dKey][field] = v;
+  el.value = v;
   save();
   renderToday();
 }
