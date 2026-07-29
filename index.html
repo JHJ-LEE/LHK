@@ -373,6 +373,13 @@ window.LOCK = (function(){
   .chart .g-label{font-size:11px;font-weight:800}
   .chart .g-hit{fill:transparent;cursor:pointer}
 
+  /* 종목마다 단위가 달라 한 그래프에 섞지 않고 따로 보여준다 */
+  .act + .act{margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
+  .act-head{display:flex;align-items:center;gap:7px;margin-bottom:2px}
+  .act-head .em{font-size:15px;line-height:1}
+  .act-head b{font-size:13.5px}
+  .act-goal{margin-left:auto;font-size:11.5px;color:var(--muted)}
+
   .fit-form{display:flex;gap:7px;margin-top:12px}
   .fit-form.ex{flex-wrap:wrap}
   .fit-form input,.fit-form select{
@@ -381,7 +388,9 @@ window.LOCK = (function(){
   }
   .fit-form input:focus,.fit-form select:focus{outline:2px solid var(--accent);outline-offset:-1px}
   .fit-form .btn{flex:none;padding:9px 14px}
-  .fit-form #exMin{max-width:88px;text-align:right;font-weight:700}
+  .fit-form #exAmt{max-width:96px;text-align:right;font-weight:700}
+  .fit-form #exType{flex:2}
+  .act .fit-hero b{font-size:30px}
 
   .fit-list{margin-top:10px}
   .fit-list-head{font-size:11.5px;font-weight:700;color:var(--muted);margin-bottom:5px}
@@ -803,8 +812,14 @@ window.LOCK = (function(){
     <label>목표 체중 (kg)
       <input type="number" id="fGoalW" min="10" max="200" step="0.1" inputmode="decimal">
     </label>
-    <label>주간 운동 목표 (분)
-      <input type="number" id="fWeekGoal" min="0" max="2000" step="10" inputmode="numeric">
+    <label>주간 목표 — 🏞️ 수변공원 슬로조깅 (바퀴)
+      <input type="number" id="fGoalLap" min="0" max="500" step="1" inputmode="numeric">
+    </label>
+    <label>주간 목표 — 🪢 줄넘기 (회)
+      <input type="number" id="fGoalRope" min="0" max="100000" step="50" inputmode="numeric">
+    </label>
+    <label>수변공원 한 바퀴에 걸리는 시간 (분)
+      <input type="number" id="fLapMin" min="1" max="120" step="1" inputmode="numeric">
     </label>
   </div>
   <div class="row" style="margin-top:14px">
@@ -1066,24 +1081,16 @@ const CATS = {
 };
 const catOf = (kind, k) => CATS[kind].find(c => c.k === k) || CATS[kind][CATS[kind].length - 1];
 
-/* 운동 종류 — met 은 운동 강도. 소모 열량 = met × 체중(kg) × 시간(h) */
-const EXERCISES = [
-  { k:'walk',   n:'걷기',     e:'🚶', met:3.5  },
-  { k:'brisk',  n:'빠른 걷기', e:'🥾', met:4.3  },
-  { k:'run',    n:'달리기',   e:'🏃', met:8.3  },
-  { k:'bike',   n:'자전거',   e:'🚴', met:6.8  },
-  { k:'swim',   n:'수영',     e:'🏊', met:6.0  },
-  { k:'gym',    n:'헬스',     e:'🏋️', met:5.0  },
-  { k:'rope',   n:'줄넘기',   e:'🪢', met:11.0 },
-  { k:'soccer', n:'축구',     e:'⚽', met:7.0  },
-  { k:'basket', n:'농구',     e:'🏀', met:6.5  },
-  { k:'bad',    n:'배드민턴', e:'🏸', met:5.5  },
-  { k:'hike',   n:'등산',     e:'🥾', met:6.5  },
-  { k:'yoga',   n:'요가·스트레칭', e:'🧘', met:3.0 },
-  { k:'boxing', n:'권투',     e:'🥊', met:7.8  },
-  { k:'etc',    n:'기타',     e:'⭐', met:4.0  },
+/* 운동 종목 — 시간이 아니라 바퀴·횟수로 센다.
+   met 은 운동 강도로, 소모 열량 = met × 체중(kg) × 시간(h) 을 어림하는 데 쓴다. */
+const ACTS = [
+  { k:'lap',  n:'수변공원 슬로조깅', e:'🏞️', unit:'바퀴', step:1,  met:6.0,
+    goalKey:'goalLap',  goalDefault:10 },
+  { k:'rope', n:'줄넘기',            e:'🪢', unit:'회',   step:50, met:11.0,
+    goalKey:'goalRope', goalDefault:1000 },
 ];
-const exOf = k => EXERCISES.find(x => x.k === k) || EXERCISES[EXERCISES.length - 1];
+const actOf = k => ACTS.find(x => x.k === k) || ACTS[0];
+const ROPE_PER_MIN = 100;   // 줄넘기는 1분에 대략 100회로 본다
 
 const STORE_KEY  = 'family-schedule-v1';
 const EVENTS_KEY = 'family-events-v1';
@@ -1267,15 +1274,18 @@ function cleanFit(raw){
     out[m.key] = {
       height:   num(r.height, 80, 230),
       goalW:    num(r.goalW, 10, 300),
-      weekGoal: num(r.weekGoal, 0, 2000) ?? 150,   // 세계보건기구 권장 주 150분
+      lapMin:   num(r.lapMin, 1, 120) ?? 12,     // 수변공원 한 바퀴에 걸리는 시간(분)
+      goalLap:  num(r.goalLap, 0, 500) ?? 10,    // 주간 목표 바퀴
+      goalRope: num(r.goalRope, 0, 100000) ?? 1000,  // 주간 목표 줄넘기 횟수
       w,
       ex: (Array.isArray(r.ex) ? r.ex : [])
-        .filter(e => e && /^\d{4}-\d{2}-\d{2}$/.test(e.date) && Number(e.min) > 0)
+        .filter(e => e && /^\d{4}-\d{2}-\d{2}$/.test(e.date)
+                  && ACTS.some(a => a.k === e.type) && Number(e.amount) > 0)
         .map(e => ({
           id: String(e.id ?? Math.random().toString(36).slice(2)),
           date: e.date,
-          type: exOf(e.type).k,
-          min: Math.min(600, Math.round(Number(e.min))),
+          type: actOf(e.type).k,
+          amount: Math.min(100000, Math.round(Number(e.amount))),
         })),
     };
   }
@@ -2146,7 +2156,12 @@ function delMoney(id){
 let curFit = 'dad';
 function setFitMember(k){ curFit = k; renderFit(); }
 
-const kcalOf = (type, min, kg) => Math.round(exOf(type).met * (kg || 60) * (min / 60));
+/* 바퀴·횟수를 시간으로 환산해 소모 열량을 어림한다 */
+function minutesOf(type, amount, f){
+  return type === 'lap' ? amount * (f.lapMin || 12) : amount / ROPE_PER_MIN;
+}
+const kcalOf = (type, amount, kg, f) =>
+  Math.round(actOf(type).met * (kg || 60) * (minutesOf(type, amount, f) / 60));
 const bmiOf = (kg, cm) => (kg && cm ? Math.round((kg / ((cm / 100) ** 2)) * 10) / 10 : null);
 const bmiLabel = b =>
   b === null ? '' : b < 18.5 ? '저체중' : b < 23 ? '정상' : b < 25 ? '과체중' : '비만';
@@ -2206,26 +2221,28 @@ function weightChart(key, color){
     </svg>`;
 }
 
-/* 이번 주 월~일 운동 시간 */
-function weekMinutes(key){
+/* 이번 주 월~일, 종목별 합계 */
+function weekOf(key, type){
   const now = new Date();
   const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - ((now.getDay() + 6) % 7));
   return DAYS.map((d, i) => {
     const day = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + i);
     const date = ymdOf(day);
-    const min = fit[key].ex.filter(e => e.date === date).reduce((s, e) => s + e.min, 0);
+    const min = fit[key].ex
+      .filter(e => e.date === date && e.type === type)
+      .reduce((s, e) => s + e.amount, 0);
     return { date, short: d.short, min, today: date === ymdOf(now) };
   });
 }
 
 /* 주간 막대 — 막대 끝은 둥글게, 막대 사이는 표면색 간격 */
-function weekBars(days, color){
-  const W = 300, H = 84, T = 8, B = 20;
-  const top = Math.max(30, ...days.map(d => d.min));
+function weekBars(days, color, unit){
+  const W = 300, H = 72, T = 8, B = 18;
+  const top = Math.max(1, ...days.map(d => d.min));
   const slot = W / 7, bw = slot - 10;
   return `
     <svg class="chart" viewBox="0 0 ${W} ${H}" role="img"
-      aria-label="이번 주 요일별 운동 시간">
+      aria-label="이번 주 요일별 ${unit}">
       <line x1="0" y1="${H - B}" x2="${W}" y2="${H - B}" class="g-line"/>
       ${days.map((d, i) => {
         const h = d.min ? Math.max(4, (d.min / top) * (H - T - B)) : 0;
@@ -2234,7 +2251,7 @@ function weekBars(days, color){
           ${h ? `<rect x="${x}" y="${y.toFixed(1)}" width="${bw}" height="${h.toFixed(1)}"
                    rx="4" fill="${color}" opacity="${d.today ? 1 : .55}"/>` : ''}
           <rect x="${i * slot}" y="0" width="${slot}" height="${H}" fill="transparent">
-            <title>${d.short}요일 · ${d.min}분</title>
+            <title>${d.short}요일 · ${d.min.toLocaleString('ko-KR')}${unit}</title>
           </rect>
           <text x="${(i * slot + slot / 2).toFixed(1)}" y="${H - 6}"
             class="g-tick ${d.today ? 'now' : ''}" text-anchor="middle">${d.short}</text>`;
@@ -2285,47 +2302,70 @@ function renderFit(){
       <button class="btn primary" onclick="saveWeight()">기록</button>
     </div>`;
 
-  /* ── 운동 ── */
-  const days = weekMinutes(curFit);
-  const total = days.reduce((s, d) => s + d.min, 0);
-  const goal = f.weekGoal || 0;
-  const rate = goal ? Math.min(100, Math.round(total / goal * 100)) : 0;
+  /* ── 운동 ── 종목마다 단위가 달라 따로 보여준다 (한 그래프에 섞지 않는다) */
   const todayList = f.ex.filter(e => e.date === today)
     .sort((a, b) => b.id.localeCompare(a.id));
-  const kcalToday = todayList.reduce((s, e) => s + kcalOf(e.type, e.min, cur), 0);
+  const kcalToday = todayList.reduce((s, e) => s + kcalOf(e.type, e.amount, cur, f), 0);
+
+  const blocks = ACTS.map(a => {
+    const days = weekOf(curFit, a.k);
+    const total = days.reduce((s, d) => s + d.min, 0);
+    const goal = f[a.goalKey] || 0;
+    const rate = goal ? Math.min(100, Math.round(total / goal * 100)) : 0;
+    return `
+      <div class="act">
+        <div class="act-head">
+          <span class="em">${a.e}</span>
+          <b>${a.n}</b>
+          <span class="act-goal">${goal ? `목표 ${goal.toLocaleString('ko-KR')}${a.unit}` : '목표 없음'}</span>
+        </div>
+        <div class="fit-hero" style="--c:${m.color}">
+          <b>${total.toLocaleString('ko-KR')}</b><span class="unit">${a.unit}</span>
+          ${goal ? `<span class="delta ${rate >= 100 ? 'down' : ''}">${rate}%</span>` : ''}
+        </div>
+        ${goal ? `<div class="bar"><i style="width:${rate}%;background:${m.color}"></i></div>` : ''}
+        ${weekBars(days, m.color, a.unit)}
+      </div>`;
+  }).join('');
 
   document.getElementById('fitExercise').innerHTML = `
     <div class="fit-head">
       <h2>이번 주 운동</h2>
-      <span class="fit-sub">${goal ? `목표 ${goal}분` : '목표 없음'}</span>
+      <button class="btn" onclick="openFitSetup()">⚙ 목표</button>
     </div>
-    <div class="fit-hero" style="--c:${m.color}">
-      <b>${total}</b><span class="unit">분</span>
-      ${goal ? `<span class="delta ${rate >= 100 ? 'down' : ''}">${rate}%</span>` : ''}
-    </div>
-    ${goal ? `<div class="bar"><i style="width:${rate}%;background:${m.color}"></i></div>` : ''}
-    ${weekBars(days, m.color)}
+    ${blocks}
     <div class="fit-form ex">
-      <select id="exType">${EXERCISES.map(x =>
+      <select id="exType" onchange="syncExUnit()">${ACTS.map(x =>
         `<option value="${x.k}">${x.e} ${x.n}</option>`).join('')}</select>
-      <input type="number" id="exMin" min="1" max="600" step="5" inputmode="numeric"
-        placeholder="분" aria-label="운동 시간(분)">
+      <input type="number" id="exAmt" min="1" max="100000" step="1" inputmode="numeric"
+        placeholder="바퀴" aria-label="운동량">
       <button class="btn primary" onclick="addExercise()">기록</button>
     </div>
     <div class="fit-list">
       ${todayList.length
         ? `<div class="fit-list-head">오늘 ${todayList.length}건 · 약 ${kcalToday}kcal</div>` +
           todayList.map(e => {
-            const x = exOf(e.type);
+            const x = actOf(e.type);
             return `<div class="fit-row">
                 <span class="em">${x.e}</span>
                 <b>${x.n}</b>
-                <small>${e.min}분 · ${kcalOf(e.type, e.min, cur)}kcal</small>
+                <small>${e.amount.toLocaleString('ko-KR')}${x.unit} · ${kcalOf(e.type, e.amount, cur, f)}kcal</small>
                 <button class="x" title="삭제" onclick="delExercise('${e.id}')">✕</button>
               </div>`;
           }).join('')
         : `<p class="fit-hint">오늘은 아직 기록이 없어요</p>`}
     </div>`;
+  syncExUnit();
+}
+
+/* 고른 종목에 맞춰 입력칸 단위를 바꾼다 */
+function syncExUnit(){
+  const sel = document.getElementById('exType');
+  const inp = document.getElementById('exAmt');
+  if (!sel || !inp) return;
+  const a = actOf(sel.value);
+  inp.placeholder = a.unit;
+  inp.step = a.step;
 }
 
 function saveWeight(){
@@ -2342,18 +2382,19 @@ function saveWeight(){
 }
 
 function addExercise(){
-  const el = document.getElementById('exMin');
-  const min = Math.round(Number(el.value));
-  if (!Number.isFinite(min) || min <= 0 || min > 600){
-    alert('운동 시간을 분 단위로 적어주세요.');
+  const el = document.getElementById('exAmt');
+  const type = document.getElementById('exType').value;
+  const a = actOf(type);
+  const amount = Math.round(Number(el.value));
+  if (!Number.isFinite(amount) || amount <= 0 || amount > 100000){
+    alert(`${a.n}을(를) 몇 ${a.unit} 했는지 적어주세요.`);
     el.focus();
     return;
   }
   fit[curFit].ex.push({
     id: Math.random().toString(36).slice(2),
     date: ymdOf(new Date()),
-    type: document.getElementById('exType').value,
-    min,
+    type, amount,
   });
   saveFit();
   renderFit();
@@ -2370,7 +2411,9 @@ function openFitSetup(){
   document.getElementById('fitSetupTitle').textContent = `${memberOf(curFit).name} 설정`;
   document.getElementById('fHeight').value = f.height ?? '';
   document.getElementById('fGoalW').value = f.goalW ?? '';
-  document.getElementById('fWeekGoal').value = f.weekGoal ?? 150;
+  document.getElementById('fGoalLap').value = f.goalLap ?? 10;
+  document.getElementById('fGoalRope').value = f.goalRope ?? 1000;
+  document.getElementById('fLapMin').value = f.lapMin ?? 12;
   document.getElementById('fitSetupDlg').showModal();
 }
 
@@ -2382,7 +2425,9 @@ function saveFitSetup(){
   const f = fit[curFit];
   f.height   = pick('fHeight', 80, 230);
   f.goalW    = pick('fGoalW', 10, 300);
-  f.weekGoal = pick('fWeekGoal', 0, 2000) ?? 150;
+  f.goalLap  = pick('fGoalLap', 0, 500) ?? 10;
+  f.goalRope = pick('fGoalRope', 0, 100000) ?? 1000;
+  f.lapMin   = pick('fLapMin', 1, 120) ?? 12;
   saveFit();
   document.getElementById('fitSetupDlg').close();
   renderFit();
