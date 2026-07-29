@@ -359,6 +359,8 @@ window.LOCK = (function(){
   .hol{font-size:10px;color:#ef4444;font-weight:600;margin-top:-2px}
   .chip{font-size:11px;font-weight:600;padding:2px 5px;border-radius:5px;line-height:1.5;
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  /* 카드 안의 그날 일정 — 그 사람 색으로 옅게 */
+  .chip.ev{background:color-mix(in srgb,var(--c) 14%,transparent);color:var(--c)}
   /* 달력 칸의 일정 — 색은 사람, 첫 줄 이름·시간, 둘째 줄 메모 */
   .mchip{display:block;background:color-mix(in srgb,var(--c) 15%,transparent);
     border-radius:6px;padding:2px 5px;line-height:1.3;overflow:hidden}
@@ -559,17 +561,18 @@ window.LOCK = (function(){
   .reg-row .nm{font-weight:700;color:var(--c);width:40px;flex:none}
   .reg-row .tm{color:var(--muted);font-variant-numeric:tabular-nums}
   .ev-item{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:9px;
-    font-size:13px;font-weight:600;margin-bottom:5px}
+    font-size:13px;font-weight:600;margin-bottom:5px;
+    background:color-mix(in srgb,var(--c) 15%,transparent);color:var(--c)}
   .ev-item .memo{font-weight:400;opacity:.8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .ev-item .x{margin-left:auto;border:0;background:transparent;color:inherit;opacity:.55;
     cursor:pointer;font-size:15px;line-height:1;padding:0 2px;flex:none}
   .ev-item .x:hover{opacity:1}
-  .add-form{display:grid;grid-template-columns:92px 1fr;gap:7px;margin-top:10px}
+  .add-form{display:grid;grid-template-columns:1fr 96px;gap:7px;margin-top:10px}
   .add-form select,.add-form input[type=text]{
     font:inherit;font-size:13px;padding:8px;border:1px solid var(--line);
     border-radius:9px;background:var(--bg);color:var(--text);min-width:0}
   .add-form #addTime{text-align:center;font-variant-numeric:tabular-nums;font-weight:600}
-  .add-form button{grid-column:1/-1}
+  .add-form #addMemo,.add-form button{grid-column:1/-1}
 
   @media (max-width:560px){
     /* 스크롤 없이 네 사람이 한 화면에 들어오도록 2×2 로 배치하고 전체를 압축한다 */
@@ -934,9 +937,8 @@ window.LOCK = (function(){
   <div id="dayEvents"></div>
   <div class="add-form">
     <select id="addMember"></select>
-    <select id="addType"></select>
     <input type="text" id="addTime" inputmode="numeric" maxlength="5" placeholder="시간 (선택)">
-    <input type="text" id="addMemo" maxlength="30" placeholder="메모 (선택)">
+    <input type="text" id="addMemo" maxlength="30" placeholder="무슨 일인지 적어주세요">
     <button class="btn primary" id="addBtn">일정 추가</button>
   </div>
 
@@ -1093,13 +1095,6 @@ const DAYS = [
   { key:'sat', name:'토요일', short:'토' },
   { key:'sun', name:'일요일', short:'일' },
 ];
-const EVENT_TYPES = [
-  { key:'vacation', name:'휴가',    bg:'#fee2e2', fg:'#b91c1c', dot:'#ef4444' },
-  { key:'home',     name:'재택',    bg:'#dbeafe', fg:'#1d4ed8', dot:'#3b82f6' },
-  { key:'trip',     name:'출장',    bg:'#fef3c7', fg:'#b45309', dot:'#f59e0b' },
-  { key:'school',   name:'학교행사', bg:'#d1fae5', fg:'#047857', dot:'#10b981' },
-  { key:'etc',      name:'기타',    bg:'#e9e9ee', fg:'#4b5563', dot:'#9ca3af' },
-];
 /* 날짜가 고정된 공휴일만 표시 (설날·추석·부처님오신날은 음력이라 자동 표시되지 않음) */
 const HOLIDAYS = {
   '01-01':'신정', '03-01':'삼일절', '05-05':'어린이날', '06-06':'현충일',
@@ -1163,7 +1158,6 @@ const EDIT_DAYS = DAYS.filter(d => WEEKDAYS.includes(d.key));
 /* 특별 일정을 온 가족에게 한 번에 적용하기 위한 가상 구성원 */
 const ALL_MEMBER = { key:'all', name:'온가족', color:'var(--accent)', role:'all' };
 const memberOf = k => (k === 'all' ? ALL_MEMBER : MEMBERS.find(m => m.key === k));
-const typeOf   = k => EVENT_TYPES.find(t => t.key === k) || EVENT_TYPES[4];
 
 /* 기본값 */
 const blankSlot = () =>
@@ -1245,7 +1239,6 @@ function cleanEvents(raw){
         return {
           id: String(e.id ?? Math.random().toString(36).slice(2)),
           member: e.member,
-          type: typeOf(e.type).key,
           time, memo,
         };
       });
@@ -1520,12 +1513,9 @@ function renderToday(){
       ...s.academies.map(a =>
         `<span class="chip" style="background:#f3e8ff;color:#7e22ce">🎒 ${esc(a)}</span>`),
       /* 'all' 은 온 가족 공통 일정이라 모든 카드에 표시된다 */
-      ...todayEvents.filter(e => e.member === m.key || e.member === 'all').sort(byTime).map(e => {
-        const t = typeOf(e.type);
-        return `<span class="chip" style="background:${t.bg};color:${t.fg}">${
-          e.member === 'all' ? '👨‍👩‍👦‍👦 ' : ''}${e.time ? e.time + ' ' : ''}${
-          t.name}${e.memo ? ' · ' + esc(e.memo) : ''}</span>`;
-      }),
+      ...todayEvents.filter(e => e.member === m.key || e.member === 'all').sort(byTime).map(e =>
+        `<span class="chip ev" style="--c:${m.color}">${e.member === 'all' ? '👨‍👩‍👦‍👦 ' : '📅 '}${
+          e.time ? e.time + ' ' : ''}${esc(e.memo || '일정')}</span>`),
     ].filter(Boolean).join('');
     const status = statusOf(m, s, now);
 
@@ -1789,12 +1779,12 @@ function renderMonth(){
 
     /* 색은 사람을 구분한다. 첫 줄에 이름과 시간, 둘째 줄에 메모를 적는다. */
     const chips = shown.map(e => {
-      const t = typeOf(e.type), m = memberOf(e.member);
-      const label = `${m.name}${e.time ? ' ' + e.time : ''} · ${t.name}${e.memo ? ' · ' + e.memo : ''}`;
-      const sub = e.memo || t.name;
-      return `<span class="mchip" style="--c:${m.color}" title="${esc(label)}">
-          <b>${m.name}${e.time ? ' ' + e.time : ''}</b>
-          <i>${esc(sub)}</i>
+      const m = memberOf(e.member);
+      const head = `${m.name}${e.time ? ' ' + e.time : ''}`;
+      return `<span class="mchip" style="--c:${m.color}"
+          title="${esc(head + (e.memo ? ' · ' + e.memo : ''))}">
+          <b>${head}</b>
+          ${e.memo ? `<i>${esc(e.memo)}</i>` : ''}
         </span>`;
     }).join('');
 
@@ -1848,8 +1838,6 @@ function openDay(key){
   document.getElementById('addMember').innerHTML =
     `<option value="all">👨‍👩‍👦‍👦 온가족</option>` +
     MEMBERS.map(m => `<option value="${m.key}"${m.key === 'dad' ? ' selected' : ''}>${m.name}</option>`).join('');
-  document.getElementById('addType').innerHTML =
-    EVENT_TYPES.map(t => `<option value="${t.key}">${t.name}</option>`).join('');
   document.getElementById('addTime').value = '';
   document.getElementById('addMemo').value = '';
 
@@ -1860,10 +1848,10 @@ function renderDayEvents(){
   const list = [...(events[openedDate] || [])].sort(byTime);
   document.getElementById('dayEvents').innerHTML = list.length
     ? list.map(e => {
-        const t = typeOf(e.type), m = memberOf(e.member);
-        return `<div class="ev-item" style="background:${t.bg};color:${t.fg}">
+        const m = memberOf(e.member);
+        return `<div class="ev-item" style="--c:${m.color}">
             ${e.time ? `<b class="ev-time">${e.time}</b>` : ''}
-            <span>${m.name} · ${t.name}</span>
+            <span>${m.name}</span>
             ${e.memo ? `<span class="memo">${esc(e.memo)}</span>` : ''}
             <button class="x" title="삭제" onclick="delEvent('${e.id}')">✕</button>
           </div>`;
@@ -1883,7 +1871,6 @@ document.getElementById('addBtn').onclick = () => {
   const ev = {
     id: Math.random().toString(36).slice(2),
     member: document.getElementById('addMember').value,
-    type:   document.getElementById('addType').value,
     time,
     memo:   document.getElementById('addMemo').value.trim().slice(0, 30),
   };
