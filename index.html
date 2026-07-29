@@ -380,6 +380,19 @@ window.LOCK = (function(){
   .act-head b{font-size:13.5px}
   .act-goal{margin-left:auto;font-size:11.5px;color:var(--muted)}
 
+  /* 금주 — 요일마다 성공 여부만 표시한다 */
+  .sober-week{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-top:11px}
+  .s-day{display:flex;flex-direction:column;align-items:center;gap:2px;
+    font-size:10.5px;color:var(--muted);cursor:default}
+  .s-day i{display:grid;place-items:center;width:100%;aspect-ratio:1/1;max-height:34px;
+    border-radius:9px;background:var(--bg);border:1px solid var(--line);
+    font-style:normal;font-size:14px;font-weight:800;color:var(--muted)}
+  .s-day.on i{background:var(--c);border-color:transparent;color:#fff}
+  .s-day.later i{opacity:.45}
+  .s-day.now{color:var(--text);font-weight:800}
+  .s-day.now i{box-shadow:0 0 0 2px var(--c)}
+  .sober-btn{width:100%;margin-top:10px;padding:10px;font-size:13.5px}
+
   .fit-form{display:flex;gap:7px;margin-top:12px}
   .fit-form.ex{flex-wrap:wrap}
   .fit-form input,.fit-form select{
@@ -1080,11 +1093,11 @@ const catOf = (kind, k) => CATS[kind].find(c => c.k === k) || CATS[kind][CATS[ki
    minPer 는 한 단위에 걸리는 시간(분). fixed 가 아니면 설정에서 바꿀 수 있다. */
 const ACTS = [
   { k:'lap',    n:'수변공원 슬로조깅', e:'🏞️', unit:'바퀴', step:1,  met:6.0,
-    goal:10,   minPer:12,   fixed:false },
+    goal:10,   minPer:12,   fixed:true  },   // 한 바퀴 12분으로 본다
   { k:'rope',   n:'줄넘기',            e:'🪢', unit:'회',   step:50, met:11.0,
     goal:1000, minPer:0.01, fixed:true  },   // 1분에 100회로 본다
   { k:'boxing', n:'권투',              e:'🥊', unit:'타임', step:1,  met:7.8,
-    goal:10,   minPer:3,    fixed:false },
+    goal:10,   minPer:3,    fixed:true  },   // 한 타임 3분으로 본다
   { k:'basket', n:'농구',              e:'🏀', unit:'분',   step:10, met:6.5,
     goal:150,  minPer:1,    fixed:true  },
 ];
@@ -1098,6 +1111,10 @@ const MEMBER_ACTS = {
   hajin: ['rope'],
 };
 const actsOf = key => (MEMBER_ACTS[key] || []).map(actOf);
+
+/* 금주는 양이 아니라 하루 단위 성공 여부라 따로 센다 */
+const SOBER_MEMBERS = ['dad'];
+const hasSober = key => SOBER_MEMBERS.includes(key);
 
 const STORE_KEY  = 'family-schedule-v1';
 const EVENTS_KEY = 'family-events-v1';
@@ -1288,10 +1305,15 @@ function cleanFit(raw){
         : (num(r.unitMin?.[a.k], 0.1, 240) ?? (a.k === 'lap' ? num(r.lapMin, 1, 120) : null) ?? a.minPer);
     }
 
+    goals.sober = num(r.goals?.sober, 0, 7) ?? 5;   // 주간 금주 목표 일수
+    const sober = {};
+    for (const [d, v] of Object.entries(r.sober || {}))
+      if (/^\d{4}-\d{2}-\d{2}$/.test(d) && v) sober[d] = true;
+
     out[m.key] = {
       height: num(r.height, 80, 230),
       goalW:  num(r.goalW, 10, 300),
-      goals, unitMin,
+      goals, unitMin, sober,
       w,
       ex: (Array.isArray(r.ex) ? r.ex : [])
         .filter(e => e && /^\d{4}-\d{2}-\d{2}$/.test(e.date)
@@ -2349,6 +2371,7 @@ function renderFit(){
       <button class="btn" onclick="openFitSetup()">⚙ 목표</button>
     </div>
     ${blocks}
+    ${hasSober(curFit) ? soberBlock(curFit, m.color) : ''}
     <div class="fit-form ex">
       ${mine.length > 1
         ? `<select id="exType" onchange="syncExUnit()">${mine.map(x =>
@@ -2374,6 +2397,60 @@ function renderFit(){
         : `<p class="fit-hint">오늘은 아직 기록이 없어요</p>`}
     </div>`;
   syncExUnit();
+}
+
+/* 이번 주 금주 현황 — 하루에 한 번, 성공 여부만 남긴다 */
+function soberWeek(key){
+  const now = new Date();
+  const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - ((now.getDay() + 6) % 7));
+  return DAYS.map((d, i) => {
+    const day = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + i);
+    const date = ymdOf(day);
+    return { date, short: d.short, done: !!fit[key].sober[date],
+             today: date === ymdOf(now), future: day > now };
+  });
+}
+
+function soberBlock(key, color){
+  const f = fit[key];
+  const days = soberWeek(key);
+  const done = days.filter(d => d.done).length;
+  const goal = f.goals?.sober || 0;
+  const rate = goal ? Math.min(100, Math.round(done / goal * 100)) : 0;
+  const todayDone = !!f.sober[ymdOf(new Date())];
+
+  return `
+    <div class="act">
+      <div class="act-head">
+        <span class="em">🚭</span>
+        <b>금주</b>
+        <span class="act-goal">${goal ? `목표 주 ${goal}일` : '목표 없음'}</span>
+      </div>
+      <div class="fit-hero" style="--c:${color}">
+        <b>${done}</b><span class="unit">일</span>
+        ${goal ? `<span class="delta ${rate >= 100 ? 'down' : ''}">${rate}%</span>` : ''}
+      </div>
+      ${goal ? `<div class="bar"><i style="width:${rate}%;background:${color}"></i></div>` : ''}
+      <div class="sober-week">
+        ${days.map(d => `
+          <span class="s-day ${d.done ? 'on' : ''} ${d.today ? 'now' : ''} ${d.future ? 'later' : ''}"
+            style="--c:${color}" title="${d.short}요일 ${d.done ? '성공' : '기록 없음'}">
+            <i>${d.done ? '✓' : '·'}</i>${d.short}
+          </span>`).join('')}
+      </div>
+      <button type="button" class="btn sober-btn ${todayDone ? 'primary' : ''}"
+        onclick="toggleSober()">
+        ${todayDone ? '✓ 오늘 금주 성공' : '오늘 금주 성공 체크'}
+      </button>
+    </div>`;
+}
+
+function toggleSober(){
+  const key = ymdOf(new Date());
+  if (fit[curFit].sober[key]) delete fit[curFit].sober[key];
+  else fit[curFit].sober[key] = true;
+  saveFit();
+  renderFit();
 }
 
 /* 고른 종목에 맞춰 입력칸 단위를 바꾼다 */
@@ -2440,7 +2517,12 @@ function openFitSetup(){
     <label>${a.n} 한 ${a.unit}에 걸리는 시간 (분)
       <input type="number" id="u_${a.k}" min="0.1" max="240" step="0.5"
         inputmode="decimal" value="${f.unitMin?.[a.k] ?? a.minPer}">
-    </label>`}`).join('');
+    </label>`}`).join('')
+    + (hasSober(curFit) ? `
+    <label>주간 목표 — 🚭 금주 (일)
+      <input type="number" id="g_sober" min="0" max="7" step="1"
+        inputmode="numeric" value="${f.goals?.sober ?? 5}">
+    </label>` : '');
 
   document.getElementById('fitSetupDlg').showModal();
 }
@@ -2457,6 +2539,7 @@ function saveFitSetup(){
     f.goals[a.k] = pick(`g_${a.k}`, 0, 100000) ?? a.goal;
     if (!a.fixed) f.unitMin[a.k] = pick(`u_${a.k}`, 0.1, 240) ?? a.minPer;
   }
+  if (hasSober(curFit)) f.goals.sober = pick('g_sober', 0, 7) ?? 5;
   saveFit();
   document.getElementById('fitSetupDlg').close();
   renderFit();
