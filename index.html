@@ -273,9 +273,9 @@ window.LOCK = (function(){
   .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
 
   .table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
-  /* 칸을 억지로 좁히지 않는다. 한 요일이 반드시 한 줄에 들어가고,
-     화면보다 넓어지면 표 안에서 좌우로 넘겨 본다. */
-  table{width:max-content;min-width:100%;border-collapse:collapse}
+  /* 한 요일이 반드시 한 줄에 들어가되(min-width:max-content), 자리가 남으면
+     표가 폭을 채운다. 입력칸도 제 칸을 채워 사이가 벌어져 보이지 않는다. */
+  table{width:100%;min-width:max-content;border-collapse:collapse}
   th,td{white-space:nowrap}
   th,td{padding:6px 4px;text-align:center}
   th{font-size:12px;color:var(--muted);font-weight:600}
@@ -285,18 +285,21 @@ window.LOCK = (function(){
   tr.today td:first-child{font-weight:700;color:var(--accent)}
   /* 주간 설정 표의 시간칸 — 오늘 화면과 같은 방식으로 쳐서 넣는다 */
   .time-edit.wk{
-    width:64px;font-size:14px;font-weight:600;letter-spacing:0;text-align:center;
+    width:100%;min-width:64px;max-width:120px;
+    font-size:14px;font-weight:600;letter-spacing:0;text-align:center;
     padding:7px 4px;border:1px solid var(--line);border-radius:9px;background:var(--bg);
   }
   .time-edit.wk:focus{outline:2px solid var(--accent);outline-offset:-1px;border-color:transparent}
   .ox{
-    width:100%;max-width:54px;border:1px solid var(--line);background:var(--bg);color:var(--muted);
+    width:100%;min-width:30px;max-width:72px;
+    border:1px solid var(--line);background:var(--bg);color:var(--muted);
     font:inherit;font-size:14px;font-weight:800;padding:7px 0;border-radius:9px;cursor:pointer;transition:.15s;
   }
   .ox:hover{border-color:var(--ox,var(--muted))}
   .ox.on{background:var(--ox,#6366f1);border-color:var(--ox,#6366f1);color:#fff}
   .acad-wrap{display:flex;flex-wrap:nowrap;gap:4px;justify-content:center}
   .acad{
+    flex:1;min-width:0;max-width:96px;
     border:1px solid var(--line);background:var(--bg);color:var(--muted);font:inherit;
     font-size:11px;font-weight:700;padding:5px 7px;border-radius:7px;cursor:pointer;transition:.15s;
   }
@@ -534,10 +537,12 @@ window.LOCK = (function(){
     .say-input{font-size:11px;padding:4px 6px;border-radius:8px;line-height:1.35}
     th:first-child,td:first-child{width:46px;font-size:12px}
     /* 엄마 카드는 항목이 여섯 개라 가장 빡빡하다. 여기에 맞춰 폭을 잡는다 */
-    .time-edit.wk{width:54px;font-size:12.5px;padding:6px 1px}
+    /* 좁은 화면에서는 칸을 채우는 대신 꼭 필요한 만큼만 잡아 한 줄에 넣는다 */
+    table{width:max-content;min-width:100%}
+    .time-edit.wk{width:54px;min-width:0;max-width:none;font-size:12.5px;padding:6px 1px}
     .acad-wrap{gap:3px}
-    .acad{font-size:10px;padding:4px 4px}
-    .ox{font-size:12px;padding:6px 0;max-width:30px}
+    .acad{flex:0 1 auto;max-width:none;font-size:10px;padding:4px 4px}
+    .ox{font-size:12px;padding:6px 0;min-width:0;max-width:30px}
     th,td{padding:5px 1px}
     th:first-child,td:first-child{width:22px}
     th{font-size:10.5px}
