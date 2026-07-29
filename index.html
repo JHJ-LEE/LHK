@@ -389,7 +389,9 @@ window.LOCK = (function(){
   .fit-form input:focus,.fit-form select:focus{outline:2px solid var(--accent);outline-offset:-1px}
   .fit-form .btn{flex:none;padding:9px 14px}
   .fit-form #exAmt{max-width:96px;text-align:right;font-weight:700}
-  .fit-form #exType{flex:2}
+  .fit-form select#exType{flex:2}
+  .only-act{flex:1;display:flex;align-items:center;gap:6px;font-size:14px;font-weight:700;
+    padding:9px 4px;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .act .fit-hero b{font-size:30px}
 
   .fit-list{margin-top:10px}
@@ -812,16 +814,8 @@ window.LOCK = (function(){
     <label>목표 체중 (kg)
       <input type="number" id="fGoalW" min="10" max="200" step="0.1" inputmode="decimal">
     </label>
-    <label>주간 목표 — 🏞️ 수변공원 슬로조깅 (바퀴)
-      <input type="number" id="fGoalLap" min="0" max="500" step="1" inputmode="numeric">
-    </label>
-    <label>주간 목표 — 🪢 줄넘기 (회)
-      <input type="number" id="fGoalRope" min="0" max="100000" step="50" inputmode="numeric">
-    </label>
-    <label>수변공원 한 바퀴에 걸리는 시간 (분)
-      <input type="number" id="fLapMin" min="1" max="120" step="1" inputmode="numeric">
-    </label>
   </div>
+  <div class="receipt-form" id="fitGoals" style="margin-top:9px"></div>
   <div class="row" style="margin-top:14px">
     <button class="btn primary" onclick="saveFitSetup()">저장</button>
     <button class="btn" onclick="document.getElementById('fitSetupDlg').close()">닫기</button>
@@ -1081,16 +1075,29 @@ const CATS = {
 };
 const catOf = (kind, k) => CATS[kind].find(c => c.k === k) || CATS[kind][CATS[kind].length - 1];
 
-/* 운동 종목 — 시간이 아니라 바퀴·횟수로 센다.
-   met 은 운동 강도로, 소모 열량 = met × 체중(kg) × 시간(h) 을 어림하는 데 쓴다. */
+/* 운동 종목 — 사람마다 하는 운동과 세는 단위가 다르다.
+   met 은 운동 강도로, 소모 열량 = met × 체중(kg) × 시간(h) 을 어림하는 데 쓴다.
+   minPer 는 한 단위에 걸리는 시간(분). fixed 가 아니면 설정에서 바꿀 수 있다. */
 const ACTS = [
-  { k:'lap',  n:'수변공원 슬로조깅', e:'🏞️', unit:'바퀴', step:1,  met:6.0,
-    goalKey:'goalLap',  goalDefault:10 },
-  { k:'rope', n:'줄넘기',            e:'🪢', unit:'회',   step:50, met:11.0,
-    goalKey:'goalRope', goalDefault:1000 },
+  { k:'lap',    n:'수변공원 슬로조깅', e:'🏞️', unit:'바퀴', step:1,  met:6.0,
+    goal:10,   minPer:12,   fixed:false },
+  { k:'rope',   n:'줄넘기',            e:'🪢', unit:'회',   step:50, met:11.0,
+    goal:1000, minPer:0.01, fixed:true  },   // 1분에 100회로 본다
+  { k:'boxing', n:'권투',              e:'🥊', unit:'타임', step:1,  met:7.8,
+    goal:10,   minPer:3,    fixed:false },
+  { k:'basket', n:'농구',              e:'🏀', unit:'분',   step:10, met:6.5,
+    goal:150,  minPer:1,    fixed:true  },
 ];
 const actOf = k => ACTS.find(x => x.k === k) || ACTS[0];
-const ROPE_PER_MIN = 100;   // 줄넘기는 1분에 대략 100회로 본다
+
+/* 누가 어떤 운동을 하는지 */
+const MEMBER_ACTS = {
+  dad:   ['lap', 'rope'],
+  mom:   ['boxing'],
+  jun:   ['basket'],
+  hajin: ['rope'],
+};
+const actsOf = key => (MEMBER_ACTS[key] || []).map(actOf);
 
 const STORE_KEY  = 'family-schedule-v1';
 const EVENTS_KEY = 'family-events-v1';
@@ -1271,12 +1278,20 @@ function cleanFit(raw){
       const kg = num(v, 5, 300);
       if (kg !== null) w[d] = Math.round(kg * 10) / 10;
     }
+    /* 주간 목표와 단위당 시간은 종목별로 담는다.
+       예전 방식(goalLap·goalRope·lapMin)으로 저장된 것도 그대로 살린다. */
+    const goals = {}, unitMin = {};
+    for (const a of ACTS){
+      const old = a.k === 'lap' ? r.goalLap : a.k === 'rope' ? r.goalRope : undefined;
+      goals[a.k] = num(r.goals?.[a.k], 0, 100000) ?? num(old, 0, 100000) ?? a.goal;
+      unitMin[a.k] = a.fixed ? a.minPer
+        : (num(r.unitMin?.[a.k], 0.1, 240) ?? (a.k === 'lap' ? num(r.lapMin, 1, 120) : null) ?? a.minPer);
+    }
+
     out[m.key] = {
-      height:   num(r.height, 80, 230),
-      goalW:    num(r.goalW, 10, 300),
-      lapMin:   num(r.lapMin, 1, 120) ?? 12,     // 수변공원 한 바퀴에 걸리는 시간(분)
-      goalLap:  num(r.goalLap, 0, 500) ?? 10,    // 주간 목표 바퀴
-      goalRope: num(r.goalRope, 0, 100000) ?? 1000,  // 주간 목표 줄넘기 횟수
+      height: num(r.height, 80, 230),
+      goalW:  num(r.goalW, 10, 300),
+      goals, unitMin,
       w,
       ex: (Array.isArray(r.ex) ? r.ex : [])
         .filter(e => e && /^\d{4}-\d{2}-\d{2}$/.test(e.date)
@@ -2156,10 +2171,9 @@ function delMoney(id){
 let curFit = 'dad';
 function setFitMember(k){ curFit = k; renderFit(); }
 
-/* 바퀴·횟수를 시간으로 환산해 소모 열량을 어림한다 */
-function minutesOf(type, amount, f){
-  return type === 'lap' ? amount * (f.lapMin || 12) : amount / ROPE_PER_MIN;
-}
+/* 바퀴·타임·횟수를 시간으로 환산해 소모 열량을 어림한다 */
+const minutesOf = (type, amount, f) =>
+  amount * (f.unitMin?.[type] ?? actOf(type).minPer);
 const kcalOf = (type, amount, kg, f) =>
   Math.round(actOf(type).met * (kg || 60) * (minutesOf(type, amount, f) / 60));
 const bmiOf = (kg, cm) => (kg && cm ? Math.round((kg / ((cm / 100) ** 2)) * 10) / 10 : null);
@@ -2307,10 +2321,11 @@ function renderFit(){
     .sort((a, b) => b.id.localeCompare(a.id));
   const kcalToday = todayList.reduce((s, e) => s + kcalOf(e.type, e.amount, cur, f), 0);
 
-  const blocks = ACTS.map(a => {
+  const mine = actsOf(curFit);
+  const blocks = mine.map(a => {
     const days = weekOf(curFit, a.k);
     const total = days.reduce((s, d) => s + d.min, 0);
-    const goal = f[a.goalKey] || 0;
+    const goal = f.goals?.[a.k] || 0;
     const rate = goal ? Math.min(100, Math.round(total / goal * 100)) : 0;
     return `
       <div class="act">
@@ -2335,10 +2350,13 @@ function renderFit(){
     </div>
     ${blocks}
     <div class="fit-form ex">
-      <select id="exType" onchange="syncExUnit()">${ACTS.map(x =>
-        `<option value="${x.k}">${x.e} ${x.n}</option>`).join('')}</select>
+      ${mine.length > 1
+        ? `<select id="exType" onchange="syncExUnit()">${mine.map(x =>
+             `<option value="${x.k}">${x.e} ${x.n}</option>`).join('')}</select>`
+        : `<span class="only-act">${mine[0].e} ${mine[0].n}</span>
+           <input type="hidden" id="exType" value="${mine[0].k}">`}
       <input type="number" id="exAmt" min="1" max="100000" step="1" inputmode="numeric"
-        placeholder="바퀴" aria-label="운동량">
+        placeholder="${mine[0].unit}" aria-label="운동량">
       <button class="btn primary" onclick="addExercise()">기록</button>
     </div>
     <div class="fit-list">
@@ -2411,9 +2429,19 @@ function openFitSetup(){
   document.getElementById('fitSetupTitle').textContent = `${memberOf(curFit).name} 설정`;
   document.getElementById('fHeight').value = f.height ?? '';
   document.getElementById('fGoalW').value = f.goalW ?? '';
-  document.getElementById('fGoalLap').value = f.goalLap ?? 10;
-  document.getElementById('fGoalRope').value = f.goalRope ?? 1000;
-  document.getElementById('fLapMin').value = f.lapMin ?? 12;
+
+  /* 목표 칸은 그 사람이 하는 종목에 맞춰 만든다 */
+  document.getElementById('fitGoals').innerHTML = actsOf(curFit).map(a => `
+    <label>주간 목표 — ${a.e} ${a.n} (${a.unit})
+      <input type="number" id="g_${a.k}" min="0" max="100000" step="${a.step}"
+        inputmode="numeric" value="${f.goals?.[a.k] ?? a.goal}">
+    </label>
+    ${a.fixed ? '' : `
+    <label>${a.n} 한 ${a.unit}에 걸리는 시간 (분)
+      <input type="number" id="u_${a.k}" min="0.1" max="240" step="0.5"
+        inputmode="decimal" value="${f.unitMin?.[a.k] ?? a.minPer}">
+    </label>`}`).join('');
+
   document.getElementById('fitSetupDlg').showModal();
 }
 
@@ -2423,11 +2451,12 @@ function saveFitSetup(){
     return Number.isFinite(n) && n >= lo && n <= hi ? n : null;
   };
   const f = fit[curFit];
-  f.height   = pick('fHeight', 80, 230);
-  f.goalW    = pick('fGoalW', 10, 300);
-  f.goalLap  = pick('fGoalLap', 0, 500) ?? 10;
-  f.goalRope = pick('fGoalRope', 0, 100000) ?? 1000;
-  f.lapMin   = pick('fLapMin', 1, 120) ?? 12;
+  f.height = pick('fHeight', 80, 230);
+  f.goalW  = pick('fGoalW', 10, 300);
+  for (const a of actsOf(curFit)){
+    f.goals[a.k] = pick(`g_${a.k}`, 0, 100000) ?? a.goal;
+    if (!a.fixed) f.unitMin[a.k] = pick(`u_${a.k}`, 0.1, 240) ?? a.minPer;
+  }
   saveFit();
   document.getElementById('fitSetupDlg').close();
   renderFit();
