@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>준&amp;하진이네 가족어플</title>
+<title>준&amp;하진이네</title>
 
 <!-- 홈 화면 아이콘 / 앱처럼 실행되도록 하는 설정 -->
 <link rel="manifest" href="./manifest.json">
@@ -12,7 +12,7 @@
 <meta name="theme-color" content="#4c6ef5">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="가족어플">
+<meta name="apple-mobile-web-app-title" content="준&amp;하진이네">
 
 <!-- 비밀번호 잠금 판정.
      화면이 잠깐 보였다 가려지는 것을 막으려고 본문보다 먼저 실행한다.
@@ -94,16 +94,21 @@ window.LOCK = (function(){
     40%,80%{transform:translateX(9px)}
   }
 
-  header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px;flex-wrap:wrap}
-  h1{font-size:22px;margin:0;letter-spacing:-.4px}
-  .head-sub{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:3px}
-  .today-label{font-size:13px;color:var(--muted)}
+  /* 제목은 남는 폭을 쓰고, 탭은 항상 오른쪽 위에 붙어 줄바꿈되지 않는다 */
+  header{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:18px}
+  .head-left{flex:1;min-width:0}
+  h1{font-size:22px;margin:0;letter-spacing:-.4px;white-space:nowrap;
+    overflow:hidden;text-overflow:ellipsis}
+  .head-sub{display:flex;align-items:center;gap:8px;margin-top:3px;min-width:0}
+  .today-label{font-size:13px;color:var(--muted);white-space:nowrap;
+    overflow:hidden;text-overflow:ellipsis}
 
   .sync{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--muted);
-    white-space:nowrap;cursor:default}
+    white-space:nowrap;cursor:default;flex:none}
   .sync i{width:8px;height:8px;border-radius:50%;flex:none}
 
-  .tabs{display:flex;gap:4px;background:var(--card);padding:4px;border-radius:12px;border:1px solid var(--line)}
+  .tabs{display:flex;gap:4px;flex:none;background:var(--card);padding:4px;
+    border-radius:12px;border:1px solid var(--line)}
   .tabs button{
     border:0;background:transparent;color:var(--muted);font:inherit;font-size:14px;font-weight:600;
     padding:8px 16px;border-radius:9px;cursor:pointer;transition:.15s;
@@ -279,9 +284,9 @@ window.LOCK = (function(){
   th,td{white-space:nowrap}
   th,td{padding:6px 4px;text-align:center}
   th{font-size:12px;color:var(--muted);font-weight:600}
-  /* 좁은 화면에서는 열 제목을 짧게 줄여 칸이 딱 맞게 한다 */
-  th b{font-weight:inherit}
-  th b.sm{display:none}
+  /* 좁은 화면에서는 긴 글씨 대신 짧은 글씨를 쓴다 (열 제목·탭) */
+  b.lg,b.sm{font-weight:inherit}
+  b.sm{display:none}
   th:first-child,td:first-child{text-align:left;width:64px;font-size:13px;color:var(--muted)}
   tr.weekend th, tr.weekend td:first-child{color:#ef4444}
   tr.today{background:color-mix(in srgb,var(--accent) 8%,transparent)}
@@ -526,11 +531,15 @@ window.LOCK = (function(){
       padding-left:calc(10px + env(safe-area-inset-left));
       padding-right:calc(10px + env(safe-area-inset-right))}
     header{margin-bottom:12px;gap:8px}
-    h1{font-size:17px}
+    h1{font-size:16px}
+    /* 탭 다섯 개가 오른쪽에 붙으면 제목 자리가 좁다 — 이모지는 뺀다 */
+    .h-emoji{display:none}
     .today-label{font-size:11px}
-    .head-sub{gap:7px;margin-top:1px}
+    .head-sub{gap:6px;margin-top:1px}
     .sync{font-size:10.5px}
-    .tabs button{padding:7px 10px;font-size:12.5px}
+    .sync span{display:none}          /* 좁으면 점 색으로만 알린다 (설명은 길게 누르면 나옴) */
+    .tabs{gap:2px;padding:3px;border-radius:10px}
+    .tabs button{padding:6px 7px;font-size:11.5px;border-radius:8px}
 
     /* 공지는 잘 보이게 키우고, 대신 카드를 촘촘하게 */
     .notice{padding:10px 12px;margin-bottom:9px;gap:9px;align-items:center}
@@ -587,8 +596,8 @@ window.LOCK = (function(){
     .say-input{font-size:11px;padding:4px 6px;border-radius:8px;line-height:1.35}
     th:first-child,td:first-child{width:46px;font-size:12px}
     /* 엄마 카드는 항목이 여섯 개라 가장 빡빡하다. 여기에 맞춰 폭을 잡는다 */
-    th b.lg{display:none}
-    th b.sm{display:inline}
+    b.lg{display:none}
+    b.sm{display:inline}
     .time-edit.wk{min-width:0;font-size:12.5px;padding:6px 1px}
     .acad-wrap{gap:3px}
     .acad{font-size:10px;padding:4px 3px}
@@ -647,6 +656,13 @@ window.LOCK = (function(){
     .speak{font-size:12px}
   }
 
+  /* 아주 좁은 기기 — 탭 다섯 개와 제목이 함께 들어가도록 한 단계 더 줄인다 */
+  @media (max-width:340px){
+    h1{font-size:14px}
+    .tabs{gap:1px;padding:2px}
+    .tabs button{padding:5px 5px;font-size:11px}
+  }
+
   /* 아주 짧은 화면(주소창·툴바가 모두 보이는 소형 기기) — 마지막 단계로 더 줄인다 */
   @media (max-width:560px) and (max-height:580px){
     .wrap{padding:7px 8px calc(7px + env(safe-area-inset-bottom))}
@@ -676,7 +692,7 @@ window.LOCK = (function(){
 <body>
 <div class="lock" id="lockScreen">
   <img class="lock-logo" src="./icon-192.png" alt="" onerror="this.remove()">
-  <h2>준&amp;하진이네 가족어플</h2>
+  <h2>준&amp;하진이네</h2>
   <p class="lock-sub">비밀번호를 입력하세요</p>
   <input type="password" id="lockInput" inputmode="numeric" pattern="[0-9]*"
     maxlength="6" autocomplete="off" aria-label="비밀번호">
@@ -686,8 +702,8 @@ window.LOCK = (function(){
 <div class="wrap">
 
   <header>
-    <div>
-      <h1>👨‍👩‍👦‍👦 준&amp;하진이네 가족어플</h1>
+    <div class="head-left">
+      <h1><span class="h-emoji">👨‍👩‍👦‍👦 </span>준&amp;하진이네</h1>
       <div class="head-sub">
         <span class="today-label" id="todayLabel"></span>
         <span class="sync" id="syncBadge" title="동기화 상태"></span>
@@ -698,7 +714,7 @@ window.LOCK = (function(){
       <button id="tabMonth" onclick="showTab('month')">월간</button>
       <button id="tabFit" onclick="showTab('fit')">운동</button>
       <button id="tabMoney" onclick="showTab('money')">용돈</button>
-      <button id="tabWeek" onclick="showTab('week')">주간 설정</button>
+      <button id="tabWeek" onclick="showTab('week')"><b class="lg">주간 설정</b><b class="sm">설정</b></button>
     </nav>
   </header>
 
@@ -2717,7 +2733,7 @@ const SYNC_LABEL = {
 function setSyncStatus(state, detail){
   const [color, label] = SYNC_LABEL[state] || SYNC_LABEL.local;
   const el = document.getElementById('syncBadge');
-  el.innerHTML = `<i style="background:${color}"></i>${label}`;
+  el.innerHTML = `<i style="background:${color}"></i><span>${label}</span>`;
   el.title = detail ? `${label} — ${detail}` : label;
 }
 
