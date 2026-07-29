@@ -68,6 +68,24 @@ window.LOCK = (function(){
   body{overflow-x:hidden}
   .wrap{max-width:960px;margin:0 auto;padding:20px 16px 64px}
 
+  /* ---- 첫 화면 ---- */
+  .splash{
+    position:fixed;inset:0;z-index:200;background:var(--bg);
+    display:grid;place-items:center;padding:24px;
+    animation:splashIn .55s cubic-bezier(.25,.8,.3,1) both;
+  }
+  .splash img{
+    max-width:min(88vw,430px);max-height:76vh;border-radius:22px;
+    box-shadow:0 14px 44px rgba(20,30,60,.22);
+  }
+  .splash.out{animation:splashOut .35s ease-in forwards}
+  @keyframes splashIn{ from{opacity:0;transform:scale(1.04)} to{opacity:1;transform:none} }
+  @keyframes splashOut{ to{opacity:0} }
+  @media (prefers-reduced-motion: reduce){
+    .splash{animation:none}
+    .splash.out{animation:none;opacity:0}
+  }
+
   /* ---- 비밀번호 잠금 ---- */
   .lock{display:none}
   :root.locked .wrap{visibility:hidden}
@@ -714,6 +732,11 @@ window.LOCK = (function(){
 </style>
 </head>
 <body>
+<!-- 앱을 열 때 잠깐 보여주는 첫 화면. 사진이 없으면 조용히 넘어간다. -->
+<div class="splash" id="splash" aria-hidden="true">
+  <img id="splashImg" src="./splash.jpg" alt="">
+</div>
+
 <div class="lock" id="lockScreen">
   <img class="lock-logo" src="./icon-192.png" alt="" onerror="this.remove()">
   <h2>준&amp;하진이네</h2>
@@ -2839,6 +2862,27 @@ function showTab(which, dir){
 document.getElementById('mDate').value = ymdOf(new Date());
 setKind('in');
 
+/* ---------- 첫 화면 ---------- */
+/* 사진이 서서히 나타났다가 1.5초쯤 뒤에 사라진다.
+   사진 파일이 없으면 기다리지 않고 바로 넘어간다. */
+const splashDone = (function setupSplash(){
+  const el = document.getElementById('splash');
+  if (!el) return Promise.resolve();
+  const img = document.getElementById('splashImg');
+  return new Promise(resolve => {
+    let alive = true;
+    const finish = fade => {
+      if (!alive) return;
+      alive = false;
+      if (!fade){ el.remove(); resolve(); return; }
+      el.classList.add('out');
+      setTimeout(() => { el.remove(); resolve(); }, 400);
+    };
+    img.addEventListener('error', () => finish(false));   // 사진이 없으면 바로 넘어간다
+    setTimeout(() => finish(true), 1150);                 // 화면에 머무는 시간 약 1.5초
+  });
+})();
+
 /* ---------- 비밀번호 잠금 ---------- */
 (function setupLock(){
   const box = document.getElementById('lockScreen');
@@ -2846,7 +2890,8 @@ setKind('in');
   const msg = document.getElementById('lockMsg');
   const isLocked = () => document.documentElement.classList.contains('locked');
 
-  if (isLocked()) setTimeout(() => input.focus(), 60);
+  /* 첫 화면이 떠 있는 동안에는 자판이 올라오지 않도록, 끝난 뒤에 커서를 놓는다 */
+  if (isLocked()) splashDone.then(() => setTimeout(() => input.focus(), 60));
 
   input.addEventListener('input', () => {
     const v = input.value.replace(/[^0-9]/g, '');
