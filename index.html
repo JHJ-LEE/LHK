@@ -259,6 +259,65 @@ window.LOCK = (function(){
     margin-top:10px;padding-top:10px;border-top:1px dashed var(--line);
     flex:1;min-height:42px}
   .card-badges:empty{border-top-style:dotted}
+  /* ---- 오늘의 시험 ---- */
+  /* 출근·퇴근 칸과 같은 모양으로 두어 점수가 한눈에 들어오게 한다 */
+  .quiz-row{display:flex;gap:10px;margin-top:8px;flex:none}
+  .quiz-box{
+    flex:1;min-width:0;font:inherit;text-align:left;cursor:pointer;position:relative;
+    background:var(--bg);border:1px solid transparent;border-radius:11px;padding:7px 11px;
+    transition:.15s;
+  }
+  /* 휴대폰에서는 칸이 얇아진다. 손가락이 닿는 자리는 위쪽 빈 공간까지 넓혀
+     실제로 누르기 쉽게 한다 (바로 위는 배지 자리라 눌릴 것이 없다). */
+  .quiz-box::before{content:'';position:absolute;left:0;right:0;top:-8px;bottom:-3px}
+  .quiz-box:hover:not([disabled]){border-color:var(--c)}
+  .quiz-box:active:not([disabled]){transform:scale(.98)}
+  .quiz-box small{display:block;font-size:11px;color:var(--muted);margin-bottom:2px}
+  .quiz-box small::after{content:' 시험'}      /* 넓은 화면에서만 풀어 쓴다 */
+  .quiz-box b{display:block;font-size:17px;font-weight:800;letter-spacing:-.4px;
+    color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .quiz-box.done b{color:var(--c);font-variant-numeric:tabular-nums}
+
+  .quiz-dlg{max-width:420px}
+  .quiz-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+  .quiz-head h3{margin:0}
+  .quiz-bar{height:4px;border-radius:99px;background:var(--line);margin:10px 0 14px;overflow:hidden}
+  .quiz-bar i{display:block;height:100%;width:var(--p,0%);border-radius:99px;
+    background:var(--accent);transition:width .25s}
+  .q-step{font-size:12px;font-weight:700;color:var(--muted);letter-spacing:.3px}
+  .q-ask{font-size:34px;font-weight:800;letter-spacing:-.5px;margin:6px 0 2px;
+    word-break:break-word}
+  .q-ask.hanja{font-size:56px;line-height:1.1;
+    font-family:"Malgun Gothic","Apple SD Gothic Neo",serif}
+  .q-hint{font-size:13px;color:var(--muted);margin-bottom:12px}
+  .q-opts{display:flex;flex-direction:column;gap:7px}
+  .q-opt{
+    display:flex;align-items:center;gap:9px;font:inherit;font-size:15px;font-weight:600;
+    text-align:left;padding:11px 12px;border-radius:12px;cursor:pointer;
+    border:1px solid var(--line);background:var(--card);color:var(--text);transition:.15s;
+  }
+  .q-opt:hover:not([disabled]){border-color:var(--accent)}
+  .q-num{flex:none;width:22px;height:22px;border-radius:50%;background:var(--bg);
+    color:var(--muted);font-size:12px;font-weight:700;
+    display:flex;align-items:center;justify-content:center}
+  .q-opt.right{border-color:#10b981;background:color-mix(in srgb,#10b981 14%,transparent);color:#047857}
+  .q-opt.right .q-num{background:#10b981;color:#fff}
+  .q-opt.wrong{border-color:#ef4444;background:color-mix(in srgb,#ef4444 12%,transparent);color:#b91c1c}
+  .q-opt.wrong .q-num{background:#ef4444;color:#fff}
+  .quiz-done{text-align:center;padding:6px 0 2px}
+  .q-face{font-size:44px;line-height:1}
+  .q-score{display:flex;align-items:baseline;justify-content:center;gap:3px;margin-top:4px}
+  .q-score b{font-size:44px;font-weight:800;color:var(--c);letter-spacing:-1px;
+    font-variant-numeric:tabular-nums}
+  .q-score span{font-size:17px;font-weight:700;color:var(--c)}
+  .q-sub{margin:2px 0 0;font-size:13.5px;color:var(--muted)}
+  .q-review{margin-top:14px;text-align:left;border-top:1px dashed var(--line);padding-top:10px}
+  .q-review-head{font-size:11.5px;font-weight:800;color:var(--muted);
+    letter-spacing:.3px;margin-bottom:6px}
+  .q-review-row{display:flex;align-items:center;gap:8px;font-size:13.5px;padding:3px 0}
+  .q-review-row b{flex:none;min-width:34px;font-weight:700}
+  .q-review-row span{color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
   .say{display:flex;align-items:flex-start;gap:6px;margin-top:8px;padding:0 2px}
   .say-icon{font-size:13px;line-height:1.6;flex:none;opacity:.7}
   .say-input{
@@ -723,9 +782,20 @@ window.LOCK = (function(){
     .time-box small{font-size:9.5px;margin-bottom:1px}
     .time-edit{font-size:18px;letter-spacing:-.7px;text-align:center}
     /* 배지 두 줄 자리 확보 — 남는 공간도 여기로 모인다 */
-    .card-badges{margin-top:6px;padding-top:6px;gap:3px;min-height:34px}
+    /* 시험 칸이 아래에 붙으면서 배지가 차지하던 빈자리를 조금 돌려준다 */
+    .card-badges{margin-top:5px;padding-top:5px;gap:3px;min-height:26px}
     .card-badges .chip{font-size:9.5px;padding:1px 4px}
-    .say{margin-top:6px;gap:4px;flex:none}
+    /* 휴대폰에서는 한 줄로 — 이름과 점수를 나란히 두어 높이를 아낀다 */
+    .quiz-row{gap:5px;margin-top:5px}
+    .quiz-box{display:flex;align-items:baseline;justify-content:center;gap:4px;
+      padding:3px 4px;border-radius:9px}
+    .quiz-box small{display:inline;font-size:9.5px;margin-bottom:0}
+    .quiz-box small::after{content:''}
+    .quiz-box b{display:inline;font-size:13px;letter-spacing:-.4px}
+    .q-ask{font-size:28px}
+    .q-ask.hanja{font-size:46px}
+    .q-opt{font-size:14px;padding:9px 10px}
+    .say{margin-top:5px;gap:4px;flex:none}
     .say-icon{font-size:10px;line-height:1.5}
     .say-input{font-size:11px;padding:4px 6px;border-radius:8px;line-height:1.35}
     th:first-child,td:first-child{width:46px;font-size:12px}
@@ -779,6 +849,11 @@ window.LOCK = (function(){
     .time-box{padding:2px 3px}
     .time-box small{font-size:8.5px;margin-bottom:0}
     .time-edit{font-size:15px}
+    .quiz-row{gap:4px;margin-top:3px}
+    .quiz-box{padding:1px 3px}
+    .quiz-box small{font-size:8.5px}
+    .quiz-box b{font-size:11.5px}
+    .card-badges{min-height:14px}
     .card-badges .chip{font-size:9px;padding:0 3px}
     .say{margin-top:4px}
     .say-input{font-size:9.5px;padding:2px 5px}
@@ -822,7 +897,11 @@ window.LOCK = (function(){
     .mood-btn{padding:2px 6px;font-size:10px}
     .time-box small{font-size:8px}
     .time-edit{font-size:14px}
-    .card-badges{min-height:15px;margin-top:3px;padding-top:3px}
+    .quiz-box{padding:0 3px}
+    .quiz-box small{font-size:8px}
+    .quiz-box b{font-size:11px}
+    .quiz-row{margin-top:2px;gap:3px}
+    .card-badges{min-height:11px;margin-top:2px;padding-top:2px}
     .say{margin-top:3px}
     .say-input{font-size:9.5px;padding:2px 4px}
     .notice{padding:5px 9px;margin-bottom:5px}
@@ -1041,6 +1120,21 @@ window.LOCK = (function(){
   </div>
 </dialog>
 
+<dialog id="quizDlg" class="quiz-dlg">
+  <div class="quiz-head">
+    <div>
+      <h3 id="quizTitle"></h3>
+      <div class="dlg-sub" id="quizWho"></div>
+    </div>
+    <button class="btn" onclick="closeQuiz()">닫기</button>
+  </div>
+  <div class="quiz-bar" id="quizProgress"><i></i></div>
+  <div id="quizBody"></div>
+  <div class="row" style="margin-top:12px">
+    <button class="btn primary" id="quizRetry" hidden onclick="retryQuiz()">같은 문제로 다시 풀기</button>
+  </div>
+</dialog>
+
 <dialog id="confirmDlg">
   <p id="confirmText"></p>
   <div class="row">
@@ -1245,6 +1339,7 @@ const MOOD_KEY   = 'family-moods-v1';
 const NOTICE_KEY = 'family-notice-v1';
 const SAYS_KEY   = 'family-says-v1';
 const FIT_KEY    = 'family-fitness-v1';
+const QUIZ_KEY   = 'family-quiz-v1';
 const WEEKDAYS = ['mon','tue','wed','thu','fri'];
 /* 주간 설정 표에는 평일만 보여준다. 자료 자체는 토·일도 그대로 두어
    주말에 오늘 화면이 깨지지 않게 한다. */
@@ -1309,6 +1404,7 @@ let money = loadMoney();
 let moods = loadMoods();
 let says = loadSays();
 let fit = loadFit();
+let quiz = loadQuiz();
 let notice = loadNotice();
 
 /* events = { "2026-07-15": [ {id, member, type, memo} ] } */
@@ -1412,6 +1508,33 @@ function loadSays(){
   catch(e){ return {}; }
 }
 function saveSays(){ put(SAYS_KEY, says); pushRemote(); }
+
+/* quiz = { "2026-07-28": { dad: { hanja: 90, eng: 80 } } } — 그날 시험 점수 */
+function cleanQuiz(raw){
+  const out = {};
+  if (!raw || typeof raw !== 'object') return out;
+  for (const [date, byMember] of Object.entries(raw)){
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !byMember || typeof byMember !== 'object') continue;
+    const day = {};
+    for (const m of MEMBERS){
+      const got = byMember[m.key];
+      if (!got || typeof got !== 'object') continue;
+      const one = {};
+      for (const k of QUIZ_KINDS){
+        const n = Number(got[k.key]);
+        if (Number.isFinite(n) && n >= 0 && n <= 100) one[k.key] = Math.round(n / 10) * 10;
+      }
+      if (Object.keys(one).length) day[m.key] = one;
+    }
+    if (Object.keys(day).length) out[date] = day;
+  }
+  return out;
+}
+function loadQuiz(){
+  try{ return cleanQuiz(JSON.parse(localStorage.getItem(QUIZ_KEY))); }
+  catch(e){ return {}; }
+}
+function saveQuiz(){ put(QUIZ_KEY, quiz); pushRemote(); }
 
 /* fit = { dad: { height, goalW, weekGoal, w:{날짜:체중}, ex:[{id,date,type,min}] } } */
 function cleanFit(raw){
@@ -1654,6 +1777,17 @@ function renderToday(){
           </label>
         </div>
         <div class="card-badges">${badges}</div>
+        <div class="quiz-row">
+          ${QUIZ_KINDS.map(k => {
+            const sc = quizScore(m.key, k.key, dateKey);
+            return `<button type="button" class="quiz-box ${sc === null ? '' : 'done'}" ${ro}
+              title="${m.name} — ${k.label} 시험${sc === null ? ' 시작' : ' 다시 풀기'}"
+              onclick="openQuiz('${m.key}','${k.key}')">
+              <small>${k.name}</small>
+              <b>${sc === null ? '시작' : sc + '점'}</b>
+            </button>`;
+          }).join('')}
+        </div>
         <label class="say">
           <span class="say-icon">💬</span>
           <textarea class="say-input" rows="2" maxlength="60" ${ro}
@@ -1709,6 +1843,185 @@ function renderWords(dateKey){
       ${engRow(e, 'eng-w')}
       ${engRow(id, 'eng-w idiom')}
     </div>`;
+}
+
+/* ---------- 오늘의 시험 ----------
+   문제는 날짜만으로 정해진다. 그래서 온 가족이 같은 날 같은 문제를 풀고,
+   다시 풀어도 문제와 보기 순서가 그대로다. */
+const QUIZ_N = 10;                     // 한 과목에 열 문제
+const QUIZ_CHOICES = 5;                // 5지선다
+const QUIZ_KINDS = [
+  { key:'hanja', name:'한자', label:'오늘의 한자 · 8급' },
+  { key:'eng',   name:'영어', label:'오늘의 영어 · 중2' },
+];
+const quizKindOf = k => QUIZ_KINDS.find(x => x.key === k) || QUIZ_KINDS[0];
+
+/* 같은 글에서 늘 같은 숫자가 나오는 셈 (FNV-1a → 선형 합동) */
+function quizSeed(text){
+  let h = 0x811c9dc5;
+  for (let i = 0; i < text.length; i++){
+    h ^= text.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return h >>> 0;
+}
+function quizRnd(seed){
+  let s = seed >>> 0;
+  return () => {
+    s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
+    return s / 4294967296;
+  };
+}
+/* 순서를 섞는다 — 같은 rnd 를 쓰면 늘 같은 순서가 된다 */
+function quizShuffle(arr, rnd){
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--){
+    const j = Math.floor(rnd() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+/* 그날의 문제 열 개를 만든다 */
+function quizOfDay(dateKey, kind){
+  const hanja = kind === 'hanja';
+  const list  = hanja ? HANJA : ENGLISH;
+  const ask   = o => (hanja ? o.c : o.w);                    // 문제로 보여줄 것
+  const answer= o => (hanja ? `${o.m} ${o.s}` : o.m);        // 정답 글
+  const rnd   = quizRnd(quizSeed(`lhk-quiz:${dateKey}:${kind}`));
+
+  const all = [...list.keys()];
+  return quizShuffle(all, rnd).slice(0, QUIZ_N).map(i => {
+    /* 정답과 같은 뜻이 보기에 두 번 나오지 않게 거른다 */
+    const wrong = quizShuffle(all.filter(j => j !== i && answer(list[j]) !== answer(list[i])), rnd)
+      .slice(0, QUIZ_CHOICES - 1);
+    const picks = quizShuffle([i, ...wrong], rnd);
+    return {
+      ask: ask(list[i]),
+      hint: hanja ? '훈과 음은?' : '무슨 뜻일까요?',
+      options: picks.map(j => answer(list[j])),
+      answer: picks.indexOf(i),
+    };
+  });
+}
+
+/* 점수 읽기 — 없으면 null */
+function quizScore(mKey, kind, dateKey){
+  const got = (quiz[dateKey || ymdOf(new Date())] || {})[mKey];
+  const n = got?.[kind];
+  return Number.isFinite(n) ? n : null;
+}
+
+/* ---------- 시험 팝업 ---------- */
+let quizState = null;      // { member, kind, list, at, right, done }
+
+function openQuiz(mKey, kind){
+  if (!LOCK.canEdit(mKey)) return;
+  quizState = {
+    member: mKey,
+    kind,
+    date: ymdOf(new Date()),
+    list: quizOfDay(ymdOf(new Date()), kind),
+    at: 0, right: 0, picked: null, done: false,
+  };
+  renderQuiz();
+  document.getElementById('quizDlg').showModal();
+}
+
+function renderQuiz(){
+  const s = quizState;
+  if (!s) return;
+  const m = memberOf(s.member), k = quizKindOf(s.kind);
+  const box = document.getElementById('quizBody');
+  document.getElementById('quizTitle').textContent = `${k.label} 시험`;
+  document.getElementById('quizWho').textContent = `${m.name} · 10문제`;
+
+  if (s.done){
+    const score = s.right * 10;
+    const face = score === 100 ? '🏆' : score >= 80 ? '🎉' : score >= 50 ? '🙂' : '💪';
+    box.innerHTML = `
+      <div class="quiz-done">
+        <div class="q-face">${face}</div>
+        <div class="q-score" style="--c:${m.color}"><b>${score}</b><span>점</span></div>
+        <p class="q-sub">10문제 중 ${s.right}문제를 맞혔어요</p>
+        ${s.wrongList.length ? `
+          <div class="q-review">
+            <div class="q-review-head">틀린 문제 다시 보기</div>
+            ${s.wrongList.map(w => `
+              <div class="q-review-row">
+                <b>${esc(w.ask)}</b>
+                <span>${esc(w.right)}</span>
+              </div>`).join('')}
+          </div>` : ''}
+      </div>`;
+    document.getElementById('quizRetry').hidden = false;
+    document.getElementById('quizProgress').style.setProperty('--p', '100%');
+    return;
+  }
+
+  document.getElementById('quizRetry').hidden = true;
+  const q = s.list[s.at];
+  document.getElementById('quizProgress').style.setProperty('--p', (s.at / QUIZ_N * 100) + '%');
+  box.innerHTML = `
+    <div class="q-step">${s.at + 1} / ${QUIZ_N}</div>
+    <div class="q-ask ${s.kind}">${esc(q.ask)}</div>
+    <div class="q-hint">${q.hint}</div>
+    <div class="q-opts">
+      ${q.options.map((o, i) => {
+        let cls = '';
+        if (s.picked !== null){
+          if (i === q.answer) cls = 'right';
+          else if (i === s.picked) cls = 'wrong';
+        }
+        return `<button type="button" class="q-opt ${cls}" ${s.picked !== null ? 'disabled' : ''}
+                  onclick="answerQuiz(${i})">
+                  <span class="q-num">${i + 1}</span>${esc(o)}
+                </button>`;
+      }).join('')}
+    </div>`;
+}
+
+function answerQuiz(i){
+  const s = quizState;
+  if (!s || s.done || s.picked !== null) return;
+  const q = s.list[s.at];
+  s.picked = i;
+  if (i === q.answer) s.right++;
+  else (s.wrongList ||= []).push({ ask: q.ask, right: q.options[q.answer] });
+  renderQuiz();
+  /* 정답을 잠깐 보여준 뒤 다음 문제로 */
+  setTimeout(() => {
+    if (quizState !== s) return;
+    s.picked = null;
+    s.at++;
+    if (s.at >= QUIZ_N){
+      s.done = true;
+      s.wrongList ||= [];
+      finishQuiz(s);
+    }
+    renderQuiz();
+  }, 850);
+}
+
+function finishQuiz(s){
+  if (!LOCK.canEdit(s.member)) return;
+  const day = quiz[s.date] || (quiz[s.date] = {});
+  const one = day[s.member] || (day[s.member] = {});
+  one[s.kind] = s.right * 10;          // 다시 풀면 마지막 점수로 바뀐다
+  saveQuiz();
+  renderToday();
+}
+
+/* 같은 문제로 다시 푼다 */
+function retryQuiz(){
+  const s = quizState;
+  if (!s) return;
+  openQuiz(s.member, s.kind);
+}
+
+function closeQuiz(){
+  quizState = null;
+  document.getElementById('quizDlg').close();
 }
 
 /* 발음 듣기 — 기기에 내장된 목소리를 쓴다 */
@@ -2851,7 +3164,7 @@ function clearMember(mKey){
 
 /* ---------- 백업 / 초기화 ---------- */
 function exportJson(){
-  const payload = { version:7, weekly:data, events, money, moods, says, fit, notice };
+  const payload = { version:8, weekly:data, events, money, moods, says, fit, quiz, notice };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type:'application/json' });
   const a = document.createElement('a');
   const d = new Date();
@@ -2913,8 +3226,9 @@ function askImport(parsed, fileName){
       moods  = cleanMoods(parsed?.moods);
       says   = cleanSays(parsed?.says);
       fit    = cleanFit(parsed?.fit);
+      quiz   = cleanQuiz(parsed?.quiz);
       notice = String(parsed?.notice || '').slice(0, 500);
-      save(); saveEvents(); saveMoney(); saveMoods(); saveSays(); saveFit(); saveNotice();
+      save(); saveEvents(); saveMoney(); saveMoods(); saveSays(); saveFit(); saveQuiz(); saveNotice();
       renderWeek(); renderMonth(); renderMoney(); renderFit(); renderNotice(); renderToday();
       dlg.close();
     }catch(e){
@@ -2936,8 +3250,9 @@ function askReset(){
     events = {};
     moods = {};
     says = {};
+    quiz = {};
     notice = '';
-    save(); saveEvents(); saveMoods(); saveSays(); saveNotice();
+    save(); saveEvents(); saveMoods(); saveSays(); saveQuiz(); saveNotice();
     renderWeek(); renderMonth(); renderNotice(); renderToday();
     dlg.close();
   };
@@ -3198,7 +3513,7 @@ function setSyncStatus(state, detail){
 window.familyApp = {
   setSyncStatus,
   /* 원격으로 보낼 전체 스냅샷 */
-  snapshot: () => ({ weekly: data, events, money, moods, says, fit, notice }),
+  snapshot: () => ({ weekly: data, events, money, moods, says, fit, quiz, notice }),
   /* 원격에서 받은 내용을 로컬에 반영 (되돌려 보내지 않는다) */
   apply(remote){
     if (!remote || typeof remote !== 'object') return;
@@ -3208,6 +3523,7 @@ window.familyApp = {
     if (remote.moods)  { moods  = cleanMoods(remote.moods);     put(MOOD_KEY,   moods); }
     if (remote.says)   { says   = cleanSays(remote.says);       put(SAYS_KEY,   says); }
     if (remote.fit)    { fit    = cleanFit(remote.fit);         put(FIT_KEY,    fit); }
+    if (remote.quiz)   { quiz   = cleanQuiz(remote.quiz);       put(QUIZ_KEY,   quiz); }
     if (typeof remote.notice === 'string'){
       notice = remote.notice.slice(0, 500);
       try{ localStorage.setItem(NOTICE_KEY, notice); }catch(e){}
