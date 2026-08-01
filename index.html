@@ -300,11 +300,13 @@ window.LOCK = (function(){
   .quiz-box.done b{color:var(--c);font-variant-numeric:tabular-nums}
 
   /* ---- 한자 따라 쓰기 ---- */
-  .trace-dlg{max-width:400px}
+  .trace-dlg{max-width:400px;width:calc(100vw - 24px)}
   .trace-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
   .trace-head h3{margin:0}
+  /* 그림판은 정사각형이되, 창이 화면 밖으로 넘지 않게 높이를 먼저 맞춘다 */
   .trace-pad{
-    position:relative;width:100%;aspect-ratio:1/1;max-height:56vh;margin:12px 0 8px;
+    position:relative;width:100%;aspect-ratio:1/1;margin:10px 0 6px;
+    max-height:calc(100vh - 250px);
     border-radius:16px;background:var(--bg);border:1px solid var(--line);
     overflow:hidden;touch-action:none;
   }
@@ -322,13 +324,39 @@ window.LOCK = (function(){
     line-height:1;color:var(--text);opacity:.18;
     user-select:none;pointer-events:none;   /* 크기는 그림판 크기에 맞춰 코드에서 정한다 */
   }
+  /* 획순 안내 — 획 하나가 median 을 따라 자라난다 */
+  .trace-guide{position:absolute;inset:0;pointer-events:none}
+  .trace-guide svg{width:100%;height:100%;display:block}
+  .g-stroke{fill:var(--accent);opacity:0;transition:opacity .4s}
+  .g-stroke.on{opacity:.85}
+  /* 안내가 끝나면 옅게 남겨 둔다 — 자기가 그은 획이 위에서 잘 보이도록 */
+  .trace-pad:not(.guiding) .g-stroke.on{opacity:.22}
+  /* 획순 그림이 있으면 글꼴로 찍은 흐린 글자는 감춘다 —
+     둘이 조금씩 어긋나 겹쳐 보이면 오히려 헷갈린다 */
+  .trace-pad.has-guide .trace-ghost{display:none}
   #traceCanvas{position:absolute;inset:0;touch-action:none;cursor:crosshair}
+  /* 안내를 보는 동안에는 손이 닿아도 그려지지 않는다 */
+  .trace-pad.guiding #traceCanvas{pointer-events:none}
+  .trace-note{text-align:center;font-size:12px;color:var(--muted);min-height:18px;
+    margin-bottom:2px}
   .trace-count{text-align:center;font-size:14px;color:var(--muted);
     font-variant-numeric:tabular-nums;min-height:22px}
   .trace-count b{font-size:19px;font-weight:800;color:var(--text)}
   .trace-count b.done{font-size:15px;color:#047857}
   .trace-count.over b{color:#ef4444}
-  .trace-tools{margin-top:10px;flex-wrap:wrap}
+  .trace-tools{margin-top:8px;flex-wrap:wrap;justify-content:center;gap:6px}
+  .trace-tools .btn{font-size:12.5px;padding:7px 10px}
+  /* 화면이 짧으면 창 전체를 한 단계 줄인다 */
+  @media (max-height:620px){
+    .trace-dlg{padding:14px}
+    .trace-head h3{font-size:16px}
+    .trace-pad{margin:8px 0 4px;max-height:calc(100vh - 214px)}
+    .trace-note{font-size:11px;min-height:15px}
+    .trace-count{font-size:12.5px;min-height:19px}
+    .trace-count b{font-size:16px}
+    .trace-tools{margin-top:6px;gap:5px}
+    .trace-tools .btn{font-size:11.5px;padding:5px 8px}
+  }
 
   .quiz-dlg{max-width:420px}
   .quiz-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
@@ -1239,10 +1267,13 @@ window.LOCK = (function(){
   </div>
   <div class="trace-pad" id="tracePad">
     <span class="trace-ghost" id="traceGhost"></span>
+    <div class="trace-guide" id="traceGuide"></div>
     <canvas id="traceCanvas"></canvas>
   </div>
+  <div class="trace-note" id="traceNote"></div>
   <div class="trace-count" id="traceCount"></div>
   <div class="row trace-tools">
+    <button class="btn" id="traceReplay" onclick="replayGuide()">▶ 획순 다시 보기</button>
     <button class="btn" onclick="undoStroke()">↩ 한 획 지우기</button>
     <button class="btn" onclick="clearTrace()">모두 지우기</button>
     <button class="btn primary" id="traceNext" onclick="nextTrace()">다음 글자</button>
@@ -2003,15 +2034,142 @@ function renderWords(dateKey){
 }
 
 /* ---------- 한자 따라 쓰기 ----------
-   흐릿한 큰 글자를 밑에 깔고 그 위에 손가락으로 덧그린다.
-   그은 획은 차례대로 쌓이고, 몇 획째인지 세어 알려준다. */
-let traceState = null;      // { list, at, strokes:[[{x,y}]], drawing }
+   글자가 뜨면 먼저 획순을 한 획씩 그려 보여주고, 끝나면 그 위에 따라 쓴다.
+   획순 자료는 공개 자료(hanzi-writer-data)를 받아 쓰고, 한 번 받으면 저장해 둔다.
+   못 받으면 안내만 건너뛰고 따라 쓰기는 그대로 된다. */
+const STROKE_CDN = 'https://cdn.jsdelivr.net/npm/hanzi-writer-data@2.0.1';
+/* 획순 자료에 없는 글자는 획순이 같은 비슷한 글자로 안내한다 */
+const STROKE_ALT = { '敎': '教' };
+const strokeCache = new Map();
+
+async function strokeDataOf(ch){
+  const key = STROKE_ALT[ch] || ch;
+  if (strokeCache.has(key)) return strokeCache.get(key);
+  /* 지난번에 받아 둔 것이 있으면 그것을 쓴다 (인터넷이 없어도 열린다) */
+  try{
+    const saved = localStorage.getItem('family-stroke-' + key);
+    if (saved){
+      const d = JSON.parse(saved);
+      strokeCache.set(key, d);
+      return d;
+    }
+  }catch(e){}
+  try{
+    const res = await fetch(`${STROKE_CDN}/${encodeURIComponent(key)}.json`);
+    if (!res.ok) throw new Error(res.status);
+    const j = await res.json();
+    const d = { strokes: j.strokes || [], medians: j.medians || [] };
+    if (!d.strokes.length) throw new Error('빈 자료');
+    strokeCache.set(key, d);
+    try{ localStorage.setItem('family-stroke-' + key, JSON.stringify(d)); }catch(e){}
+    return d;
+  }catch(e){
+    /* 실패는 기억해 두지 않는다 — 인터넷이 잠깐 끊겼을 뿐이면 다시 눌러서 받을 수 있게 */
+    return null;
+  }
+}
+
+let traceState = null;   // { list, at, strokes, drawing, phase, anim }
 
 function openTrace(i){
   const hs = wordsOfDay(HANJA, ymdOf(new Date()), 2);
-  traceState = { list: hs, at: Math.max(0, Math.min(hs.length - 1, i | 0)), strokes: [], drawing: null };
+  traceState = { list: hs, at: Math.max(0, Math.min(hs.length - 1, i | 0)),
+                 strokes: [], drawing: null, phase: 'guide', anim: 0 };
   document.getElementById('traceDlg').showModal();
   renderTrace();
+  playGuide();
+}
+
+/* ── 획순 안내 ── */
+const GUIDE_MS = 620;        // 한 획 그리는 데 걸리는 시간
+const GUIDE_GAP = 180;       // 획과 획 사이 쉬는 시간
+let guideTimers = [];
+
+function stopGuide(){
+  guideTimers.forEach(clearTimeout);
+  guideTimers = [];
+}
+
+async function playGuide(){
+  const s = traceState;
+  if (!s) return;
+  stopGuide();
+  const h = s.list[s.at];
+  const wrap = document.getElementById('traceGuide');
+  const note = document.getElementById('traceNote');
+  const run = ++s.anim;                       // 도중에 글자가 바뀌면 옛 안내는 버린다
+
+  s.phase = 'guide';
+  renderTraceMode();
+  note.textContent = '획순을 불러오는 중…';
+  wrap.innerHTML = '';
+  document.getElementById('tracePad').classList.remove('has-guide');
+
+  const data = await strokeDataOf(h.c);
+  if (!traceState || traceState !== s || s.anim !== run) return;
+
+  if (!data){
+    s.phase = 'trace';
+    note.textContent = '획순 안내를 불러오지 못했어요 — 그냥 따라 써 보세요';
+    renderTraceMode();
+    return;
+  }
+  document.getElementById('tracePad').classList.add('has-guide');
+
+  note.textContent = STROKE_ALT[h.c]
+    ? `획순 보는 중 — 모양이 거의 같은 ${STROKE_ALT[h.c]} 로 안내해요`
+    : '획순 보는 중…';
+
+  /* 1024×1024 자리에 그려진 자료라, 창 크기에 맞추고 위아래를 뒤집는다 */
+  const S = 1024;
+  wrap.innerHTML = `
+    <svg viewBox="0 0 ${S} ${S}" aria-hidden="true">
+      <g transform="translate(0, ${S}) scale(1, -1)">
+        ${data.strokes.map((d, i) => `
+          <mask id="gm${i}" maskUnits="userSpaceOnUse" x="0" y="0" width="${S}" height="${S}">
+            <polyline points="${(data.medians[i] || []).map(p => p.join(',')).join(' ')}"
+              fill="none" stroke="#fff" stroke-width="160"
+              stroke-linecap="round" stroke-linejoin="round" id="gp${i}"/>
+          </mask>
+          <path d="${d}" mask="url(#gm${i})" class="g-stroke" id="gs${i}"/>`).join('')}
+      </g>
+    </svg>`;
+
+  /* 각 획을 median 을 따라 자라나게 해서 쓰는 방향까지 보이게 한다 */
+  const lens = data.strokes.map((_, i) => {
+    const p = document.getElementById('gp' + i);
+    const len = p.getTotalLength ? p.getTotalLength() : 1000;
+    p.style.strokeDasharray = len;
+    p.style.strokeDashoffset = len;
+    p.style.transition = `stroke-dashoffset ${GUIDE_MS}ms linear`;
+    return len;
+  });
+
+  data.strokes.forEach((_, i) => {
+    guideTimers.push(setTimeout(() => {
+      if (!traceState || traceState !== s || s.anim !== run) return;
+      document.getElementById('gs' + i)?.classList.add('on');
+      const p = document.getElementById('gp' + i);
+      if (p) p.style.strokeDashoffset = 0;
+      note.textContent = `획순 보는 중 — ${i + 1} / ${lens.length}획`;
+    }, i * (GUIDE_MS + GUIDE_GAP)));
+  });
+
+  guideTimers.push(setTimeout(() => {
+    if (!traceState || traceState !== s || s.anim !== run) return;
+    s.phase = 'trace';
+    note.textContent = '이제 따라 써 보세요';
+    renderTraceMode();
+  }, lens.length * (GUIDE_MS + GUIDE_GAP) + 350));
+}
+
+function replayGuide(){ if (traceState) playGuide(); }
+
+/* 안내를 보는 중에는 그림판을 잠근다 */
+function renderTraceMode(){
+  const guide = traceState?.phase === 'guide';
+  document.getElementById('tracePad').classList.toggle('guiding', guide);
+  document.getElementById('traceReplay').disabled = guide;
 }
 
 function traceChar(){ return traceState ? traceState.list[traceState.at] : null; }
@@ -2110,9 +2268,12 @@ function nextTrace(){
   traceState.strokes = [];
   traceState.drawing = null;
   renderTrace();
+  playGuide();               // 글자가 바뀌면 획순부터 다시 보여준다
 }
 function closeTrace(){
+  stopGuide();
   traceState = null;
+  document.getElementById('traceGuide').innerHTML = '';
   document.getElementById('traceDlg').close();
 }
 
