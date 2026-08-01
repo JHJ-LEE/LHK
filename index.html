@@ -202,7 +202,9 @@ window.LOCK = (function(){
   /* ---- 오늘의 한자 · 영어 ---- */
   /* --row-h 하나로 발음 버튼 크기와 줄 높이를 함께 정한다.
      그래야 발음 버튼이 없는 한자 칸도 영어 칸과 줄 간격이 똑같아진다. */
-  .words{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;flex:none;
+  /* 낱말과 뜻을 나란히 두면 중2 숙어처럼 긴 것이 잘린다. 위아래로 쌓아
+     각 줄이 칸 너비를 온전히 쓰게 한다. 영어 쪽이 더 기니 조금 넓게 준다. */
+  .words{display:grid;grid-template-columns:0.88fr 1.12fr;gap:10px;margin-top:12px;flex:none;
     --row-h:32px}
   .word-box{background:var(--card);border:1px solid var(--line);border-radius:14px;
     padding:10px 12px;box-shadow:var(--shadow);min-width:0}
@@ -215,13 +217,16 @@ window.LOCK = (function(){
     margin-top:5px;
     background:linear-gradient(var(--line), var(--line)) top/100% 1px no-repeat;
   }
-  .word-row b{font-size:15px;font-weight:700;flex:none;white-space:nowrap}
-  .word-row small{font-size:12px;color:var(--muted);flex:1;min-width:0;
+  .word-txt{display:flex;flex-direction:column;justify-content:center;gap:1px;
+    flex:1;min-width:0;line-height:1.25}
+  .word-row b{font-size:14px;font-weight:700;min-width:0;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .word-row small{font-size:11.5px;color:var(--muted);min-width:0;
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .hanja-char{font-size:26px;font-weight:700;line-height:1.1;flex:none;width:32px;
     text-align:center;font-family:"Malgun Gothic","Apple SD Gothic Neo",serif}
-  .eng-w{letter-spacing:-.3px;font-size:17px}
-  .eng-w.idiom{font-size:14px}
+  .eng-w{letter-spacing:-.3px;font-size:15px}
+  .eng-w.idiom{font-size:13.5px}
   .speak{
     flex:none;margin-left:auto;width:var(--row-h);height:var(--row-h);border-radius:50%;
     border:1px solid var(--line);background:var(--bg);font-size:15px;
@@ -628,10 +633,11 @@ window.LOCK = (function(){
     .word-label{font-size:9.5px;margin-bottom:2px}
     .word-row{gap:6px}
     .word-row + .word-row{margin-top:3px}
-    .word-row b{font-size:12.5px}
+    .word-txt{gap:0;line-height:1.2}
+    .word-row b{font-size:12px}
     .word-row small{font-size:10.5px}
     .hanja-char{font-size:20px;width:24px}
-    .eng-w{font-size:14px}
+    .eng-w{font-size:12.5px}
     .eng-w.idiom{font-size:12px}
     .speak{font-size:13px}
     /* 시간 칸은 PC 처럼 낮게, 글자는 가운데로 */
@@ -703,9 +709,10 @@ window.LOCK = (function(){
     .word-label{font-size:9px;margin-bottom:2px}
     .word-row + .word-row{margin-top:3px}
     .hanja-char{font-size:18px;width:22px}
+    .word-txt{line-height:1.15}
     .word-row b{font-size:11.5px}
-    .word-row small{font-size:10px}
-    .eng-w{font-size:13px}
+    .word-row small{font-size:9.5px}
+    .eng-w{font-size:12px}
     .eng-w.idiom{font-size:11.5px}
     .speak{font-size:12px}
   }
@@ -728,8 +735,10 @@ window.LOCK = (function(){
     .word-box{padding:4px 7px}
     .hanja-char{font-size:17px;width:20px}
     .word-label{font-size:8.5px;margin-bottom:1px}
+    .word-txt{line-height:1.1}
     .word-row b{font-size:11px}
-    .eng-w{font-size:12px}
+    .word-row small{font-size:9px}
+    .eng-w{font-size:11.5px}
     .eng-w.idiom{font-size:11px}
     .speak{font-size:11px}
     .card{padding:5px}
@@ -979,83 +988,84 @@ const MEMBERS = [
   { key:'jun',   name:'준',    color:'var(--jun)',   goLabel:'등교', backLabel:'귀가', role:'kid' },
   { key:'hajin', name:'하진',  color:'var(--hajin)', goLabel:'등교', backLabel:'귀가', role:'kid' },
 ];
-/* 오늘의 한자 (한국어문회 7급) — c:한자, m:훈, s:음, w:한자어, wm:뜻 */
+/* 오늘의 한자 (한국어문회 8급, 50자) — c:한자, m:훈, s:음, w:한자어, wm:뜻 */
 const HANJA = [
-  {c:'家',m:'집',s:'가',w:'家族',wm:'가족'},   {c:'歌',m:'노래',s:'가',w:'歌手',wm:'가수'},
-  {c:'間',m:'사이',s:'간',w:'時間',wm:'시간'}, {c:'江',m:'강',s:'강',w:'江山',wm:'강산'},
-  {c:'工',m:'장인',s:'공',w:'工場',wm:'공장'}, {c:'空',m:'빌',s:'공',w:'空氣',wm:'공기'},
-  {c:'記',m:'기록할',s:'기',w:'日記',wm:'일기'},{c:'男',m:'사내',s:'남',w:'男子',wm:'남자'},
-  {c:'內',m:'안',s:'내',w:'內外',wm:'내외'},   {c:'農',m:'농사',s:'농',w:'農村',wm:'농촌'},
-  {c:'答',m:'대답',s:'답',w:'正答',wm:'정답'}, {c:'道',m:'길',s:'도',w:'道路',wm:'도로'},
-  {c:'冬',m:'겨울',s:'동',w:'立冬',wm:'입동'}, {c:'洞',m:'골',s:'동',w:'洞里',wm:'동리'},
-  {c:'動',m:'움직일',s:'동',w:'動物',wm:'동물'},{c:'同',m:'한가지',s:'동',w:'同時',wm:'동시'},
-  {c:'登',m:'오를',s:'등',w:'登山',wm:'등산'}, {c:'來',m:'올',s:'래',w:'未來',wm:'미래'},
-  {c:'力',m:'힘',s:'력',w:'電力',wm:'전력'},   {c:'老',m:'늙을',s:'로',w:'老人',wm:'노인'},
-  {c:'林',m:'수풀',s:'림',w:'山林',wm:'산림'}, {c:'立',m:'설',s:'립',w:'自立',wm:'자립'},
-  {c:'每',m:'매양',s:'매',w:'每日',wm:'매일'}, {c:'面',m:'낯',s:'면',w:'場面',wm:'장면'},
-  {c:'名',m:'이름',s:'명',w:'有名',wm:'유명'}, {c:'命',m:'목숨',s:'명',w:'生命',wm:'생명'},
-  {c:'文',m:'글월',s:'문',w:'文字',wm:'문자'}, {c:'問',m:'물을',s:'문',w:'問答',wm:'문답'},
-  {c:'物',m:'물건',s:'물',w:'事物',wm:'사물'}, {c:'方',m:'모',s:'방',w:'地方',wm:'지방'},
-  {c:'百',m:'일백',s:'백',w:'百姓',wm:'백성'}, {c:'夫',m:'지아비',s:'부',w:'農夫',wm:'농부'},
-  {c:'不',m:'아닐',s:'불',w:'不安',wm:'불안'}, {c:'事',m:'일',s:'사',w:'農事',wm:'농사'},
-  {c:'算',m:'셈',s:'산',w:'算數',wm:'산수'},   {c:'上',m:'윗',s:'상',w:'上下',wm:'상하'},
-  {c:'色',m:'빛',s:'색',w:'色紙',wm:'색지'},   {c:'夕',m:'저녁',s:'석',w:'秋夕',wm:'추석'},
-  {c:'姓',m:'성',s:'성',w:'姓名',wm:'성명'},   {c:'世',m:'인간',s:'세',w:'世上',wm:'세상'},
-  {c:'少',m:'적을',s:'소',w:'少年',wm:'소년'}, {c:'所',m:'바',s:'소',w:'場所',wm:'장소'},
-  {c:'數',m:'셈',s:'수',w:'數學',wm:'수학'},   {c:'手',m:'손',s:'수',w:'手足',wm:'수족'},
-  {c:'時',m:'때',s:'시',w:'時代',wm:'시대'},   {c:'市',m:'저자',s:'시',w:'市場',wm:'시장'},
-  {c:'食',m:'밥',s:'식',w:'食事',wm:'식사'},   {c:'植',m:'심을',s:'식',w:'植物',wm:'식물'},
-  {c:'心',m:'마음',s:'심',w:'安心',wm:'안심'}, {c:'安',m:'편안',s:'안',w:'便安',wm:'편안'},
+  {c:'敎',m:'가르칠',s:'교',w:'敎室',wm:'교실'},{c:'校',m:'학교',s:'교',w:'學校',wm:'학교'},
+  {c:'九',m:'아홉',s:'구',w:'九月',wm:'구월'},  {c:'國',m:'나라',s:'국',w:'韓國',wm:'한국'},
+  {c:'軍',m:'군사',s:'군',w:'軍人',wm:'군인'},  {c:'金',m:'쇠',s:'금',w:'黃金',wm:'황금'},
+  {c:'南',m:'남녘',s:'남',w:'南北',wm:'남북'},  {c:'女',m:'여자',s:'녀',w:'女子',wm:'여자'},
+  {c:'年',m:'해',s:'년',w:'每年',wm:'매년'},    {c:'大',m:'큰',s:'대',w:'大門',wm:'대문'},
+  {c:'東',m:'동녘',s:'동',w:'東西',wm:'동서'},  {c:'六',m:'여섯',s:'륙',w:'六十',wm:'육십'},
+  {c:'萬',m:'일만',s:'만',w:'百萬',wm:'백만'},  {c:'母',m:'어미',s:'모',w:'父母',wm:'부모'},
+  {c:'木',m:'나무',s:'목',w:'木手',wm:'목수'},  {c:'門',m:'문',s:'문',w:'校門',wm:'교문'},
+  {c:'民',m:'백성',s:'민',w:'國民',wm:'국민'},  {c:'白',m:'흰',s:'백',w:'白紙',wm:'백지'},
+  {c:'父',m:'아비',s:'부',w:'父子',wm:'부자'},  {c:'北',m:'북녘',s:'북',w:'北韓',wm:'북한'},
+  {c:'四',m:'넉',s:'사',w:'四方',wm:'사방'},    {c:'山',m:'메',s:'산',w:'登山',wm:'등산'},
+  {c:'三',m:'석',s:'삼',w:'三國',wm:'삼국'},    {c:'生',m:'날',s:'생',w:'學生',wm:'학생'},
+  {c:'西',m:'서녘',s:'서',w:'西海',wm:'서해'},  {c:'先',m:'먼저',s:'선',w:'先生',wm:'선생'},
+  {c:'小',m:'작을',s:'소',w:'大小',wm:'대소'},  {c:'水',m:'물',s:'수',w:'生水',wm:'생수'},
+  {c:'室',m:'집',s:'실',w:'室內',wm:'실내'},    {c:'十',m:'열',s:'십',w:'十字',wm:'십자'},
+  {c:'五',m:'다섯',s:'오',w:'五月',wm:'오월'},  {c:'王',m:'임금',s:'왕',w:'王子',wm:'왕자'},
+  {c:'外',m:'바깥',s:'외',w:'外國',wm:'외국'},  {c:'月',m:'달',s:'월',w:'月末',wm:'월말'},
+  {c:'二',m:'두',s:'이',w:'二月',wm:'이월'},    {c:'人',m:'사람',s:'인',w:'人氣',wm:'인기'},
+  {c:'一',m:'한',s:'일',w:'一生',wm:'일생'},    {c:'日',m:'날',s:'일',w:'生日',wm:'생일'},
+  {c:'長',m:'긴',s:'장',w:'校長',wm:'교장'},    {c:'弟',m:'아우',s:'제',w:'弟子',wm:'제자'},
+  {c:'中',m:'가운데',s:'중',w:'中心',wm:'중심'},{c:'靑',m:'푸를',s:'청',w:'靑軍',wm:'청군'},
+  {c:'寸',m:'마디',s:'촌',w:'三寸',wm:'삼촌'},  {c:'七',m:'일곱',s:'칠',w:'七月',wm:'칠월'},
+  {c:'土',m:'흙',s:'토',w:'國土',wm:'국토'},    {c:'八',m:'여덟',s:'팔',w:'八月',wm:'팔월'},
+  {c:'學',m:'배울',s:'학',w:'入學',wm:'입학'},  {c:'韓',m:'한국',s:'한',w:'韓服',wm:'한복'},
+  {c:'兄',m:'형',s:'형',w:'兄弟',wm:'형제'},    {c:'火',m:'불',s:'화',w:'火山',wm:'화산'},
 ];
 
-/* 오늘의 영어 (중학교 1학년 수준) */
+/* 오늘의 영어 (중학교 2학년 수준) */
 const ENGLISH = [
-  {w:'ability',m:'능력'},        {w:'across',m:'가로질러'},   {w:'advice',m:'조언'},
-  {w:'agree',m:'동의하다'},      {w:'already',m:'이미'},      {w:'always',m:'항상'},
-  {w:'angry',m:'화난'},          {w:'answer',m:'대답하다'},   {w:'arrive',m:'도착하다'},
-  {w:'become',m:'~이 되다'},     {w:'believe',m:'믿다'},      {w:'borrow',m:'빌리다'},
-  {w:'bring',m:'가져오다'},      {w:'build',m:'짓다'},        {w:'busy',m:'바쁜'},
-  {w:'careful',m:'조심하는'},    {w:'change',m:'바꾸다'},     {w:'choose',m:'고르다'},
-  {w:'clean',m:'깨끗한'},        {w:'climb',m:'오르다'},      {w:'collect',m:'모으다'},
-  {w:'culture',m:'문화'},        {w:'decide',m:'결정하다'},   {w:'delicious',m:'맛있는'},
-  {w:'different',m:'다른'},      {w:'difficult',m:'어려운'},  {w:'enjoy',m:'즐기다'},
-  {w:'enough',m:'충분한'},       {w:'exercise',m:'운동'},     {w:'famous',m:'유명한'},
-  {w:'favorite',m:'가장 좋아하는'},{w:'finish',m:'끝내다'},   {w:'forget',m:'잊다'},
-  {w:'future',m:'미래'},         {w:'health',m:'건강'},       {w:'holiday',m:'휴일'},
-  {w:'hungry',m:'배고픈'},       {w:'important',m:'중요한'},  {w:'interesting',m:'흥미로운'},
-  {w:'invite',m:'초대하다'},     {w:'kitchen',m:'부엌'},      {w:'language',m:'언어'},
-  {w:'library',m:'도서관'},      {w:'listen',m:'듣다'},       {w:'machine',m:'기계'},
-  {w:'medicine',m:'약'},         {w:'mistake',m:'실수'},      {w:'nature',m:'자연'},
-  {w:'neighbor',m:'이웃'},       {w:'order',m:'주문하다'},
+  {w:'accept',m:'받아들이다'},   {w:'achieve',m:'이루다'},    {w:'advantage',m:'이점'},
+  {w:'ancient',m:'고대의'},      {w:'appear',m:'나타나다'},   {w:'attention',m:'주의'},
+  {w:'avoid',m:'피하다'},        {w:'balance',m:'균형'},      {w:'brave',m:'용감한'},
+  {w:'cause',m:'원인'},          {w:'certain',m:'확실한'},    {w:'challenge',m:'도전'},
+  {w:'character',m:'성격'},      {w:'communicate',m:'의사소통하다'},{w:'compare',m:'비교하다'},
+  {w:'complete',m:'완성하다'},   {w:'condition',m:'상태'},    {w:'connect',m:'연결하다'},
+  {w:'consider',m:'고려하다'},   {w:'continue',m:'계속하다'}, {w:'create',m:'만들어 내다'},
+  {w:'curious',m:'호기심 많은'}, {w:'dangerous',m:'위험한'},  {w:'describe',m:'묘사하다'},
+  {w:'develop',m:'발전시키다'},  {w:'disappear',m:'사라지다'},{w:'discover',m:'발견하다'},
+  {w:'effort',m:'노력'},         {w:'environment',m:'환경'},  {w:'especially',m:'특히'},
+  {w:'experience',m:'경험'},     {w:'explain',m:'설명하다'},  {w:'express',m:'표현하다'},
+  {w:'familiar',m:'익숙한'},     {w:'imagine',m:'상상하다'},  {w:'improve',m:'향상시키다'},
+  {w:'increase',m:'늘어나다'},   {w:'introduce',m:'소개하다'},{w:'knowledge',m:'지식'},
+  {w:'measure',m:'재다'},        {w:'offer',m:'제공하다'},    {w:'opinion',m:'의견'},
+  {w:'prepare',m:'준비하다'},    {w:'protect',m:'보호하다'},  {w:'realize',m:'깨닫다'},
+  {w:'recognize',m:'알아보다'},  {w:'reduce',m:'줄이다'},     {w:'respect',m:'존중하다'},
+  {w:'serious',m:'심각한'},      {w:'similar',m:'비슷한'},    {w:'situation',m:'상황'},
+  {w:'success',m:'성공'},        {w:'suggest',m:'제안하다'},  {w:'tradition',m:'전통'},
+  {w:'valuable',m:'귀중한'},     {w:'volunteer',m:'자원봉사자'},{w:'weight',m:'무게'},
 ];
 
-/* 오늘의 영어 숙어 (중학교 1학년 수준) */
+/* 오늘의 영어 숙어 (중학교 2학년 수준) */
 const IDIOMS = [
-  {w:'look for',m:'~을 찾다'},           {w:'get up',m:'일어나다'},
-  {w:'take care of',m:'~을 돌보다'},     {w:'turn on',m:'켜다'},
-  {w:'turn off',m:'끄다'},               {w:'put on',m:'입다'},
-  {w:'take off',m:'벗다'},               {w:'give up',m:'포기하다'},
-  {w:'find out',m:'알아내다'},           {w:'look after',m:'돌보다'},
-  {w:'look forward to',m:'~을 기대하다'},{w:'pick up',m:'집어 들다'},
-  {w:'come from',m:'~에서 오다'},        {w:'listen to',m:'~을 듣다'},
-  {w:'wait for',m:'~을 기다리다'},       {w:'arrive at',m:'~에 도착하다'},
-  {w:'be good at',m:'~을 잘하다'},       {w:'be interested in',m:'~에 관심이 있다'},
-  {w:'be late for',m:'~에 늦다'},        {w:'be full of',m:'~로 가득 차다'},
-  {w:'a lot of',m:'많은'},               {w:'a few',m:'약간의'},
-  {w:'at first',m:'처음에는'},           {w:'at last',m:'마침내'},
-  {w:'by the way',m:'그런데'},           {w:'for example',m:'예를 들어'},
-  {w:'in front of',m:'~앞에'},           {w:'next to',m:'~옆에'},
-  {w:'of course',m:'물론'},              {w:'on time',m:'정시에'},
-  {w:'right now',m:'지금 바로'},         {w:'so far',m:'지금까지'},
-  {w:'such as',m:'~와 같은'},            {w:'take a walk',m:'산책하다'},
-  {w:'take part in',m:'~에 참가하다'},   {w:'thanks to',m:'~덕분에'},
-  {w:'these days',m:'요즘'},             {w:'try on',m:'입어 보다'},
-  {w:'used to',m:'~하곤 했다'},          {w:'worry about',m:'~을 걱정하다'},
-  {w:'write down',m:'적어 두다'},        {w:'go on a picnic',m:'소풍 가다'},
-  {w:'have a cold',m:'감기에 걸리다'},   {w:'help oneself',m:'마음껏 먹다'},
-  {w:'keep in touch',m:'연락하며 지내다'},{w:'make friends',m:'친구를 사귀다'},
-  {w:'run away',m:'도망치다'},           {w:'set the table',m:'상을 차리다'},
-  {w:'stay up late',m:'늦게까지 깨어 있다'},{w:'throw away',m:'버리다'},
+  {w:'be able to',m:'~할 수 있다'},        {w:'be afraid of',m:'~을 무서워하다'},
+  {w:'be based on',m:'~에 바탕을 두다'},   {w:'be known for',m:'~로 유명하다'},
+  {w:'be proud of',m:'~을 자랑스러워하다'}, {w:'be similar to',m:'~와 비슷하다'},
+  {w:'be used to',m:'~에 익숙하다'},       {w:'break down',m:'고장 나다'},
+  {w:'bring up',m:'기르다'},               {w:'carry out',m:'해내다'},
+  {w:'come true',m:'이루어지다'},          {w:'deal with',m:'~을 다루다'},
+  {w:'depend on',m:'~에 달려 있다'},       {w:'die out',m:'멸종하다'},
+  {w:'figure out',m:'알아내다'},           {w:'fill out',m:'작성하다'},
+  {w:'focus on',m:'~에 집중하다'},         {w:'get along with',m:'~와 잘 지내다'},
+  {w:'get rid of',m:'~을 없애다'},         {w:'go through',m:'겪다'},
+  {w:'hand in',m:'제출하다'},              {w:'hang out',m:'어울려 놀다'},
+  {w:'keep in mind',m:'명심하다'},         {w:'lead to',m:'~로 이어지다'},
+  {w:'look up to',m:'~을 존경하다'},       {w:'make sure',m:'확실히 하다'},
+  {w:'pay attention to',m:'~에 주목하다'},   {w:'point out',m:'지적하다'},
+  {w:'put off',m:'미루다'},                {w:'result in',m:'~을 낳다'},
+  {w:'run out of',m:'~을 다 써 버리다'},   {w:'show up',m:'나타나다'},
+  {w:'take advantage of',m:'~을 이용하다'},{w:'take place',m:'일어나다'},
+  {w:'turn into',m:'~로 바뀌다'},          {w:'work on',m:'~에 공들이다'},
+  {w:'as soon as',m:'~하자마자'},          {w:'as well as',m:'~뿐만 아니라'},
+  {w:'at the same time',m:'동시에'},       {w:'because of',m:'~때문에'},
+  {w:'for a while',m:'잠시 동안'},         {w:'in addition',m:'게다가'},
+  {w:'in fact',m:'사실은'},                {w:'in order to',m:'~하기 위해'},
+  {w:'instead of',m:'~ 대신에'},           {w:'no longer',m:'더 이상 ~ 아닌'},
+  {w:'on the other hand',m:'반면에'},      {w:'up to date',m:'가장 최신의'},
 ];
 
 /* 오늘의 기분 */
@@ -1582,24 +1592,28 @@ function renderWords(dateKey){
   const [id] = wordsOfDay(IDIOMS,  dateKey, 1);
   const engRow = (o, cls) => `
     <div class="word-row">
-      <b class="${cls}">${o.w}</b>
-      <small>${o.m}</small>
+      <span class="word-txt">
+        <b class="${cls}" title="${esc(o.w)}">${esc(o.w)}</b>
+        <small title="${esc(o.m)}">${esc(o.m)}</small>
+      </span>
       <button type="button" class="speak" title="발음 듣기"
-        onclick="speak('${o.w}', this)">🔊</button>
+        onclick="speak(${esc(JSON.stringify(o.w))}, this)">🔊</button>
     </div>`;
 
   document.getElementById('words').innerHTML = `
     <div class="word-box">
-      <span class="word-label">오늘의 한자 · 7급</span>
+      <span class="word-label">오늘의 한자 · 8급</span>
       ${hs.map(h => `
         <div class="word-row">
           <span class="hanja-char">${h.c}</span>
-          <b>${h.m} ${h.s}</b>
-          <small>${h.w} · ${h.wm}</small>
+          <span class="word-txt">
+            <b>${h.m} ${h.s}</b>
+            <small>${h.w} · ${h.wm}</small>
+          </span>
         </div>`).join('')}
     </div>
     <div class="word-box">
-      <span class="word-label">오늘의 영어 · 중1</span>
+      <span class="word-label">오늘의 영어 · 중2</span>
       ${engRow(e, 'eng-w')}
       ${engRow(id, 'eng-w idiom')}
     </div>`;
