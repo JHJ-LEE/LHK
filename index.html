@@ -38,7 +38,8 @@ window.LOCK = (function(){
     '14tm58t': 'jun',      // 준
     'k6xly5':  'hajin',    // 하진
   };
-  const NOTICE_EDITORS = ['dad', 'mom'];   // 공지는 어른만 고친다
+  /* 어른만 할 수 있는 일 — 공지사항, 아이들 기본 용돈 정하기 */
+  const PARENTS = ['dad', 'mom'];
 
   let saved = null;
   try { saved = localStorage.getItem(KEY) || localStorage.getItem(OLD); } catch (e) {}
@@ -72,7 +73,8 @@ window.LOCK = (function(){
     },
     /* 자기 것만 고칠 수 있다. 아빠는 관리자라 모두 고칠 수 있다. */
     canEdit: k => !!who && (who === 'dad' || who === k),
-    canEditNotice: () => !!who && NOTICE_EDITORS.includes(who),
+    isParent:      () => !!who && PARENTS.includes(who),
+    canEditNotice: () => !!who && PARENTS.includes(who),
   };
 })();
 </script>
@@ -619,6 +621,38 @@ window.LOCK = (function(){
   .balance .amt.minus{color:#ef4444}
   .balance .piggy{font-size:26px;margin-bottom:2px}
 
+  /* ---- 다음 달 받을 용돈 ---- */
+  .plan{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    padding:14px 16px;margin-top:12px;box-shadow:var(--shadow)}
+  .plan-head{display:flex;align-items:center;justify-content:space-between;gap:8px;
+    margin-bottom:10px}
+  .plan-head h2{margin:0;font-size:15px;letter-spacing:-.3px}
+  .plan-who{font-size:12px;font-weight:700;color:var(--c);white-space:nowrap}
+  .plan-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+  .plan-box{background:var(--bg);border-radius:11px;padding:8px 10px;min-width:0}
+  .plan-box small{display:block;font-size:11px;color:var(--muted);margin-bottom:3px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .plan-box b, .plan-box input{
+    display:block;width:100%;min-width:0;font:inherit;font-size:19px;font-weight:800;
+    font-variant-numeric:tabular-nums;letter-spacing:-.6px;color:var(--text);
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+  .plan-box input{border:0;background:transparent;padding:0;border-radius:6px;
+    -moz-appearance:textfield}
+  .plan-box input::-webkit-outer-spin-button,
+  .plan-box input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+  .plan-box input:focus{outline:2px solid var(--accent);outline-offset:2px}
+  .plan-box input.bad{outline:2px solid #ef4444;outline-offset:2px}
+  .plan-box.total{background:color-mix(in srgb,var(--c) 12%,transparent)}
+  .plan-box.total b{color:var(--c)}
+  .plan-hint{margin:9px 0 0;font-size:11.5px;line-height:1.45;color:var(--muted)}
+  .plan-hint b{font-weight:800;color:var(--text)}
+  .plan-days{display:flex;flex-wrap:wrap;gap:4px;margin-top:7px}
+  .plan-days.empty{font-size:11.5px;color:var(--muted)}
+  .p-day{font-size:10.5px;font-weight:700;padding:1px 6px;border-radius:99px;
+    background:color-mix(in srgb,#10b981 15%,transparent);color:#047857;
+    font-variant-numeric:tabular-nums}
+
   .money-form{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
     padding:16px;margin-top:14px;box-shadow:var(--shadow)}
   .money-form[hidden]{display:none}
@@ -813,6 +847,16 @@ window.LOCK = (function(){
     .quiz-box small{display:inline;font-size:9.5px;margin-bottom:0}
     .quiz-box small::after{content:''}
     .quiz-box b{display:inline;font-size:13px;letter-spacing:-.4px}
+    /* 다음 달 용돈 — 세 칸이 나란히 들어가도록 글자를 줄인다 */
+    .plan{padding:11px 12px;margin-top:10px}
+    .plan-head{margin-bottom:8px}
+    .plan-head h2{font-size:14px}
+    .plan-who{font-size:11px}
+    .plan-grid{gap:6px}
+    .plan-box{padding:6px 7px;border-radius:9px}
+    .plan-box small{font-size:9.5px;margin-bottom:1px}
+    .plan-box b,.plan-box input{font-size:15px;letter-spacing:-.8px}
+    .plan-hint{font-size:10.5px;margin-top:7px}
     .q-ask{font-size:28px}
     .q-ask.hanja{font-size:46px}
     .q-opt{font-size:14px;padding:9px 10px}
@@ -895,6 +939,11 @@ window.LOCK = (function(){
     h1{font-size:14px}
     .tabs{gap:1px;padding:2px}
     .tabs button{padding:5px 5px;font-size:11px}
+    /* 가장 좁은 기기에서는 금액이 잘리지 않게 한 단계 더 줄인다 */
+    .plan{padding:9px 10px}
+    .plan-box{padding:5px 5px}
+    .plan-box small{font-size:9px}
+    .plan-box b,.plan-box input{font-size:13px;letter-spacing:-.9px}
   }
 
   /* 아주 짧은 화면(주소창·툴바가 모두 보이는 소형 기기) — 마지막 단계로 더 줄인다 */
@@ -1007,6 +1056,8 @@ window.LOCK = (function(){
     <div class="kid-tabs" id="kidTabs"></div>
 
     <div class="balance" id="balanceCard"></div>
+
+    <div class="plan" id="planCard"></div>
 
     <div class="money-form" id="moneyForm">
       <div class="kind-toggle">
@@ -1362,6 +1413,7 @@ const NOTICE_KEY = 'family-notice-v1';
 const SAYS_KEY   = 'family-says-v1';
 const FIT_KEY    = 'family-fitness-v1';
 const QUIZ_KEY   = 'family-quiz-v1';
+const PLAN_KEY   = 'family-plan-v1';
 const WEEKDAYS = ['mon','tue','wed','thu','fri'];
 /* 주간 설정 표에는 평일만 보여준다. 자료 자체는 토·일도 그대로 두어
    주말에 오늘 화면이 깨지지 않게 한다. */
@@ -1427,6 +1479,7 @@ let moods = loadMoods();
 let says = loadSays();
 let fit = loadFit();
 let quiz = loadQuiz();
+let plan = loadPlan();
 let notice = loadNotice();
 
 /* events = { "2026-07-15": [ {id, member, type, memo} ] } */
@@ -1557,6 +1610,21 @@ function loadQuiz(){
   catch(e){ return {}; }
 }
 function saveQuiz(){ put(QUIZ_KEY, quiz); pushRemote(); }
+
+/* plan = { jun: { base: 20000 } } — 다음 달에 줄 기본 용돈 (어른이 정한다) */
+function cleanPlan(raw){
+  const out = {};
+  for (const k of KIDS){
+    const n = Number(raw?.[k.key]?.base);
+    out[k.key] = { base: Number.isFinite(n) && n >= 0 ? Math.min(1000000, Math.round(n)) : 0 };
+  }
+  return out;
+}
+function loadPlan(){
+  try{ return cleanPlan(JSON.parse(localStorage.getItem(PLAN_KEY))); }
+  catch(e){ return cleanPlan(null); }
+}
+function savePlan(){ put(PLAN_KEY, plan); pushRemote(); }
 
 /* fit = { dad: { height, goalW, weekGoal, w:{날짜:체중}, ex:[{id,date,type,min}] } } */
 function cleanFit(raw){
@@ -1905,27 +1973,58 @@ function quizShuffle(arr, rnd){
   return a;
 }
 
-/* 그날의 문제 열 개를 만든다 */
-function quizOfDay(dateKey, kind){
-  const hanja = kind === 'hanja';
-  const list  = hanja ? HANJA : ENGLISH;
-  const ask   = o => (hanja ? o.c : o.w);                    // 문제로 보여줄 것
-  const answer= o => (hanja ? `${o.m} ${o.s}` : o.m);        // 정답 글
-  const rnd   = quizRnd(quizSeed(`lhk-quiz:${dateKey}:${kind}`));
-
+/* 한 묶음에서 n 문제를 뽑는다. 보기는 같은 묶음 안에서만 고른다 —
+   낱말 문제에 숙어를 섞으면 답이 뻔히 보이기 때문. */
+function quizPick(list, n, rnd, ask, answer, hint){
   const all = [...list.keys()];
-  return quizShuffle(all, rnd).slice(0, QUIZ_N).map(i => {
+  return quizShuffle(all, rnd).slice(0, n).map(i => {
     /* 정답과 같은 뜻이 보기에 두 번 나오지 않게 거른다 */
     const wrong = quizShuffle(all.filter(j => j !== i && answer(list[j]) !== answer(list[i])), rnd)
       .slice(0, QUIZ_CHOICES - 1);
     const picks = quizShuffle([i, ...wrong], rnd);
     return {
       ask: ask(list[i]),
-      hint: hanja ? '훈과 음은?' : '무슨 뜻일까요?',
+      hint,
       options: picks.map(j => answer(list[j])),
       answer: picks.indexOf(i),
     };
   });
+}
+
+/* 그날의 문제 열 개를 만든다.
+   영어는 낱말 다섯 문제 + 숙어 다섯 문제로 낸다. */
+function quizOfDay(dateKey, kind){
+  const rnd = quizRnd(quizSeed(`lhk-quiz:${dateKey}:${kind}`));
+  if (kind === 'hanja')
+    return quizPick(HANJA, QUIZ_N, rnd, o => o.c, o => `${o.m} ${o.s}`, '훈과 음은?');
+
+  const half = QUIZ_N / 2;
+  const words   = quizPick(ENGLISH, half, rnd, o => o.w, o => o.m, '무슨 뜻일까요?');
+  const idioms  = quizPick(IDIOMS,  half, rnd, o => o.w, o => o.m, '무슨 뜻일까요?');
+  return quizShuffle([...words, ...idioms], rnd);
+}
+
+/* ---------- 미션 용돈 ----------
+   한자·영어를 둘 다 100점 받은 날마다 1000원. 하루에 한 번만 쌓이고,
+   이번 달 것만 센다 — 달이 바뀌면 저절로 0부터 다시 시작한다. */
+const MISSION_PAY = 1000;
+
+function missionDays(kidKey, monthPrefix){
+  const pre = monthPrefix || ymdOf(new Date()).slice(0, 7);
+  return Object.entries(quiz)
+    .filter(([date, byMember]) => date.startsWith(pre)
+      && byMember?.[kidKey]?.hanja === 100 && byMember?.[kidKey]?.eng === 100)
+    .map(([date]) => date)
+    .sort();
+}
+function missionPay(kidKey, monthPrefix){
+  return missionDays(kidKey, monthPrefix).length * MISSION_PAY;
+}
+
+/* 다음 달 이름 — 12월 다음은 1월 */
+function nextMonthLabel(){
+  const d = new Date();
+  return ((d.getMonth() + 1) % 12) + 1;
 }
 
 /* 점수 읽기 — 없으면 null */
@@ -2348,6 +2447,66 @@ const won = n => n.toLocaleString('ko-KR') + '원';
 
 function setKid(k){ curKid = k; renderMoney(); scheduleSeen(); }
 
+/* ---------- 다음 달 받을 용돈 ----------
+   기본 용돈은 어른(아빠·엄마)이 정하고, 미션 용돈은 시험 점수에서 저절로 나온다. */
+function renderPlan(kid){
+  const base = plan[kid.key].base;
+  const days = missionDays(kid.key);
+  const mission = days.length * MISSION_PAY;
+  const may = LOCK.isParent();               // 기본 용돈은 어른만 고친다
+
+  document.getElementById('planCard').innerHTML = `
+    <div class="plan-head">
+      <h2>${nextMonthLabel()}월에 받을 용돈</h2>
+      <span class="plan-who" style="--c:${kid.color}">${kid.emoji} ${kid.name}</span>
+    </div>
+    <div class="plan-grid">
+      <div class="plan-box">
+        <small>기본 용돈</small>
+        ${may
+          ? `<input type="text" id="planBase" inputmode="numeric" maxlength="9"
+               value="${base.toLocaleString('ko-KR')}" aria-label="${kid.name} 기본 용돈"
+               onfocus="this.select()" onchange="setPlanBase(this.value, this)">`
+          : `<b>${base.toLocaleString('ko-KR')}</b>`}
+      </div>
+      <div class="plan-box">
+        <small>미션 용돈</small>
+        <b>${mission.toLocaleString('ko-KR')}</b>
+      </div>
+      <div class="plan-box total" style="--c:${kid.color}">
+        <small>합계</small>
+        <b>${(base + mission).toLocaleString('ko-KR')}</b>
+      </div>
+    </div>
+    <p class="plan-hint">
+      ${may ? '' : '기본 용돈은 아빠·엄마가 정해요. '}한자·영어 시험을 <b>둘 다 100점</b> 받은 날마다
+      ${MISSION_PAY.toLocaleString('ko-KR')}원 · 하루 한 번 · 달이 바뀌면 다시 0부터
+    </p>
+    ${days.length
+      ? `<div class="plan-days">${days.map(d => {
+           const [, m, dd] = d.split('-');
+           return `<span class="p-day">${+m}/${+dd}</span>`;
+         }).join('')}</div>`
+      : `<div class="plan-days empty">아직 두 과목 다 100점 받은 날이 없어요</div>`}`;
+}
+
+function setPlanBase(raw, el){
+  const back = () => { el.value = plan[curKid].base.toLocaleString('ko-KR'); };
+  if (!LOCK.isParent()){ back(); return; }
+  /* 20,000 처럼 쉼표를 넣어 쳐도 되고, 20000 이라고 쳐도 된다 */
+  const s = String(raw).replace(/[,\s원]/g, '');
+  const n = Math.round(Number(s));
+  if (!/^\d+$/.test(s) || !Number.isFinite(n) || n > 1000000){
+    back();                                   // 말이 안 되는 값은 되돌린다
+    el.classList.add('bad');
+    setTimeout(() => el.classList.remove('bad'), 900);
+    return;
+  }
+  plan[curKid].base = n;
+  savePlan();
+  renderMoney();
+}
+
 /* 받았어요/썼어요 전환은 화면 상태일 뿐이라 누구나 눌러도 된다.
    실제로 적히는 곳(기록하기·영수증·삭제)에서 권한을 본다. */
 function setKind(k){
@@ -2632,6 +2791,8 @@ function renderMoney(){
     <div class="piggy">🐷</div>
     <small>${kid.name}이의 남은 용돈</small>
     <div class="amt ${bal < 0 ? 'minus' : ''}">${won(bal)}</div>`;
+
+  renderPlan(kid);
 
   /* 이번 달 요약 */
   const now = new Date();
@@ -3189,7 +3350,7 @@ function clearMember(mKey){
 
 /* ---------- 백업 / 초기화 ---------- */
 function exportJson(){
-  const payload = { version:8, weekly:data, events, money, moods, says, fit, quiz, notice };
+  const payload = { version:9, weekly:data, events, money, moods, says, fit, quiz, plan, notice };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type:'application/json' });
   const a = document.createElement('a');
   const d = new Date();
@@ -3252,8 +3413,10 @@ function askImport(parsed, fileName){
       says   = cleanSays(parsed?.says);
       fit    = cleanFit(parsed?.fit);
       quiz   = cleanQuiz(parsed?.quiz);
+      plan   = cleanPlan(parsed?.plan);
       notice = String(parsed?.notice || '').slice(0, 500);
-      save(); saveEvents(); saveMoney(); saveMoods(); saveSays(); saveFit(); saveQuiz(); saveNotice();
+      save(); saveEvents(); saveMoney(); saveMoods(); saveSays(); saveFit(); saveQuiz();
+      savePlan(); saveNotice();
       renderWeek(); renderMonth(); renderMoney(); renderFit(); renderNotice(); renderToday();
       dlg.close();
     }catch(e){
@@ -3636,6 +3799,10 @@ function whatChanged(remote){
     const next = cleanMoney(remote.money);
     for (const k of KIDS) if (!sameJson(next[k.key], money[k.key])) spots.add(`money:${k.key}`);
   }
+  if (remote.plan){
+    const next = cleanPlan(remote.plan);
+    for (const k of KIDS) if (!sameJson(next[k.key], plan[k.key])) spots.add(`money:${k.key}`);
+  }
   if (remote.fit){
     const next = cleanFit(remote.fit);
     for (const m of MEMBERS) if (!sameJson(next[m.key], fit[m.key])) spots.add(`fit:${m.key}`);
@@ -3762,7 +3929,7 @@ window.familyApp = {
   setSyncStatus,
   /* 원격으로 보낼 전체 스냅샷. by 는 마지막으로 손댄 사람 —
      받는 쪽에서 "엄마가 바꿨어요" 라고 알려주기 위해 함께 보낸다. */
-  snapshot: () => ({ weekly: data, events, money, moods, says, fit, quiz, notice,
+  snapshot: () => ({ weekly: data, events, money, moods, says, fit, quiz, plan, notice,
                      by: LOCK.who() || '' }),
   /* 원격에서 받은 내용을 로컬에 반영 (되돌려 보내지 않는다) */
   apply(remote){
@@ -3776,6 +3943,7 @@ window.familyApp = {
     if (remote.says)   { says   = cleanSays(remote.says);       put(SAYS_KEY,   says); }
     if (remote.fit)    { fit    = cleanFit(remote.fit);         put(FIT_KEY,    fit); }
     if (remote.quiz)   { quiz   = cleanQuiz(remote.quiz);       put(QUIZ_KEY,   quiz); }
+    if (remote.plan)   { plan   = cleanPlan(remote.plan);       put(PLAN_KEY,   plan); }
     if (typeof remote.notice === 'string'){
       notice = remote.notice.slice(0, 500);
       try{ localStorage.setItem(NOTICE_KEY, notice); }catch(e){}
