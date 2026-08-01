@@ -299,6 +299,37 @@ window.LOCK = (function(){
     color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .quiz-box.done b{color:var(--c);font-variant-numeric:tabular-nums}
 
+  /* ---- 한자 따라 쓰기 ---- */
+  .trace-dlg{max-width:400px}
+  .trace-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+  .trace-head h3{margin:0}
+  .trace-pad{
+    position:relative;width:100%;aspect-ratio:1/1;max-height:56vh;margin:12px 0 8px;
+    border-radius:16px;background:var(--bg);border:1px solid var(--line);
+    overflow:hidden;touch-action:none;
+  }
+  /* 가운데 십자 보조선 — 글자 자리를 잡기 쉽게 */
+  .trace-pad::before,.trace-pad::after{
+    content:'';position:absolute;background:repeating-linear-gradient(
+      var(--line) 0 6px, transparent 6px 12px);
+  }
+  .trace-pad::before{left:50%;top:6%;bottom:6%;width:1px;transform:translateX(-.5px)}
+  .trace-pad::after{top:50%;left:6%;right:6%;height:1px;
+    background:repeating-linear-gradient(90deg,var(--line) 0 6px, transparent 6px 12px)}
+  .trace-ghost{
+    position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    font-family:"Malgun Gothic","Apple SD Gothic Neo",serif;font-weight:700;
+    line-height:1;color:var(--text);opacity:.18;
+    user-select:none;pointer-events:none;   /* 크기는 그림판 크기에 맞춰 코드에서 정한다 */
+  }
+  #traceCanvas{position:absolute;inset:0;touch-action:none;cursor:crosshair}
+  .trace-count{text-align:center;font-size:14px;color:var(--muted);
+    font-variant-numeric:tabular-nums;min-height:22px}
+  .trace-count b{font-size:19px;font-weight:800;color:var(--text)}
+  .trace-count b.done{font-size:15px;color:#047857}
+  .trace-count.over b{color:#ef4444}
+  .trace-tools{margin-top:10px;flex-wrap:wrap}
+
   .quiz-dlg{max-width:420px}
   .quiz-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
   .quiz-head h3{margin:0}
@@ -378,8 +409,13 @@ window.LOCK = (function(){
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .word-row small{font-size:11.5px;color:var(--muted);min-width:0;
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .hanja-char{font-size:26px;font-weight:700;line-height:1.1;flex:none;width:32px;
-    text-align:center;font-family:"Malgun Gothic","Apple SD Gothic Neo",serif}
+  /* 한자를 누르면 따라 쓰기 창이 열린다 */
+  .hanja-char{font:inherit;font-size:26px;font-weight:700;line-height:1.1;flex:none;width:32px;
+    text-align:center;font-family:"Malgun Gothic","Apple SD Gothic Neo",serif;
+    border:0;background:transparent;color:var(--text);padding:0;cursor:pointer;
+    border-radius:8px;transition:.15s}
+  .hanja-char:hover{background:color-mix(in srgb,var(--accent) 12%,transparent)}
+  .hanja-char:active{transform:scale(.92)}
   .eng-w{letter-spacing:-.3px;font-size:15px}
   .eng-w.idiom{font-size:13.5px}
   .speak{
@@ -1193,6 +1229,26 @@ window.LOCK = (function(){
   </div>
 </dialog>
 
+<dialog id="traceDlg" class="trace-dlg">
+  <div class="trace-head">
+    <div>
+      <h3 id="traceTitle"></h3>
+      <div class="dlg-sub" id="traceSub"></div>
+    </div>
+    <button class="btn" onclick="closeTrace()">닫기</button>
+  </div>
+  <div class="trace-pad" id="tracePad">
+    <span class="trace-ghost" id="traceGhost"></span>
+    <canvas id="traceCanvas"></canvas>
+  </div>
+  <div class="trace-count" id="traceCount"></div>
+  <div class="row trace-tools">
+    <button class="btn" onclick="undoStroke()">↩ 한 획 지우기</button>
+    <button class="btn" onclick="clearTrace()">모두 지우기</button>
+    <button class="btn primary" id="traceNext" onclick="nextTrace()">다음 글자</button>
+  </div>
+</dialog>
+
 <dialog id="quizDlg" class="quiz-dlg">
   <div class="quiz-head">
     <div>
@@ -1268,6 +1324,15 @@ const HANJA = [
   {c:'學',m:'배울',s:'학',w:'入學',wm:'입학'},  {c:'韓',m:'한국',s:'한',w:'韓服',wm:'한복'},
   {c:'兄',m:'형',s:'형',w:'兄弟',wm:'형제'},    {c:'火',m:'불',s:'화',w:'火山',wm:'화산'},
 ];
+
+/* 8급 한자의 획수 — 따라 쓸 때 몇 획인지 알려주기 위해 */
+const STROKES = {
+  '敎':11,'校':10,'九':2, '國':11,'軍':9, '金':8, '南':9, '女':3, '年':6, '大':3,
+  '東':8, '六':4, '萬':13,'母':5, '木':4, '門':8, '民':5, '白':5, '父':4, '北':5,
+  '四':5, '山':3, '三':3, '生':5, '西':6, '先':6, '小':3, '水':4, '室':9, '十':2,
+  '五':4, '王':4, '外':5, '月':4, '二':2, '人':2, '一':1, '日':4, '長':8, '弟':7,
+  '中':4, '靑':8, '寸':3, '七':2, '土':3, '八':2, '學':16,'韓':17,'兄':5, '火':4,
+};
 
 /* 오늘의 영어 (중학교 2학년 수준) */
 const ENGLISH = [
@@ -1920,9 +1985,10 @@ function renderWords(dateKey){
   document.getElementById('words').innerHTML = `
     <div class="word-box">
       <span class="word-label">오늘의 한자 · 8급</span>
-      ${hs.map(h => `
+      ${hs.map((h, i) => `
         <div class="word-row">
-          <span class="hanja-char">${h.c}</span>
+          <button type="button" class="hanja-char" title="눌러서 따라 써보기"
+            onclick="openTrace(${i})">${h.c}</button>
           <span class="word-txt">
             <b>${h.m} ${h.s}</b>
             <small>${h.w} · ${h.wm}</small>
@@ -1935,6 +2001,152 @@ function renderWords(dateKey){
       ${engRow(id, 'eng-w idiom')}
     </div>`;
 }
+
+/* ---------- 한자 따라 쓰기 ----------
+   흐릿한 큰 글자를 밑에 깔고 그 위에 손가락으로 덧그린다.
+   그은 획은 차례대로 쌓이고, 몇 획째인지 세어 알려준다. */
+let traceState = null;      // { list, at, strokes:[[{x,y}]], drawing }
+
+function openTrace(i){
+  const hs = wordsOfDay(HANJA, ymdOf(new Date()), 2);
+  traceState = { list: hs, at: Math.max(0, Math.min(hs.length - 1, i | 0)), strokes: [], drawing: null };
+  document.getElementById('traceDlg').showModal();
+  renderTrace();
+}
+
+function traceChar(){ return traceState ? traceState.list[traceState.at] : null; }
+
+function renderTrace(){
+  const h = traceChar();
+  if (!h) return;
+  document.getElementById('traceTitle').textContent = `${h.c} ${h.m} ${h.s}`;
+  document.getElementById('traceSub').textContent = `${h.w} · ${h.wm}`;
+  document.getElementById('traceGhost').textContent = h.c;
+  document.getElementById('traceNext').textContent =
+    traceState.list.length > 1 ? '다음 글자' : '다시';
+  fitTraceCanvas();
+  renderTraceCount();
+}
+
+function renderTraceCount(){
+  const h = traceChar();
+  const total = STROKES[h.c];
+  const n = traceState.strokes.length;
+  const el = document.getElementById('traceCount');
+  if (!total){ el.textContent = `${n}획 그었어요`; return; }
+  el.innerHTML = n === total
+    ? `<b class="done">${n}획 — 딱 맞아요! 🎉</b>`
+    : `<b>${n}</b> / ${total}획` + (n > total ? ' · 너무 많아요' : '');
+  el.classList.toggle('over', n > total);
+}
+
+/* 화면 크기에 맞춰 그림판을 다시 잡는다 (선명하게 그리려고 화면 배율만큼 키운다) */
+function fitTraceCanvas(){
+  const cv = document.getElementById('traceCanvas');
+  const pad = document.getElementById('tracePad');
+  const r = pad.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  cv.width  = Math.max(1, Math.round(r.width  * dpr));
+  cv.height = Math.max(1, Math.round(r.height * dpr));
+  cv.style.width = r.width + 'px';
+  cv.style.height = r.height + 'px';
+  /* 흐릿한 글자는 그림판 안에 꽉 차되 넘치지 않게 —
+     글꼴마다 글자가 차지하는 높이가 달라, 줄이면서 맞춰 넣는다 */
+  const ghost = document.getElementById('traceGhost');
+  const box = Math.min(r.width, r.height);
+  for (let f = Math.round(box * 0.74); f >= 24; f -= 4){
+    ghost.style.fontSize = f + 'px';
+    if (ghost.scrollWidth <= r.width && ghost.scrollHeight <= r.height) break;
+  }
+  const ctx = cv.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  redrawTrace();
+}
+
+function redrawTrace(){
+  const cv = document.getElementById('traceCanvas');
+  const ctx = cv.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  ctx.clearRect(0, 0, cv.width / dpr, cv.height / dpr);
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  const all = traceState.drawing ? [...traceState.strokes, traceState.drawing] : traceState.strokes;
+  all.forEach((stroke, i) => {
+    if (!stroke.length) return;
+    /* 나중에 그은 획일수록 진하게 — 순서가 눈에 보이도록 */
+    const t = all.length > 1 ? i / (all.length - 1) : 1;
+    ctx.strokeStyle = `hsl(222 80% ${52 - t * 18}%)`;
+    ctx.lineWidth = 9;
+    ctx.beginPath();
+    ctx.moveTo(stroke[0].x, stroke[0].y);
+    if (stroke.length === 1) ctx.lineTo(stroke[0].x + 0.1, stroke[0].y);
+    else for (let k = 1; k < stroke.length; k++) ctx.lineTo(stroke[k].x, stroke[k].y);
+    ctx.stroke();
+    /* 획 번호를 시작점에 작게 적는다 */
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.arc(stroke[0].x, stroke[0].y, 9, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = `hsl(222 80% ${52 - t * 18}%)`;
+    ctx.font = 'bold 12px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(String(i + 1), stroke[0].x, stroke[0].y + 0.5);
+  });
+}
+
+function undoStroke(){
+  if (!traceState || !traceState.strokes.length) return;
+  traceState.strokes.pop();
+  redrawTrace(); renderTraceCount();
+}
+function clearTrace(){
+  if (!traceState) return;
+  traceState.strokes = [];
+  traceState.drawing = null;
+  redrawTrace(); renderTraceCount();
+}
+function nextTrace(){
+  if (!traceState) return;
+  traceState.at = (traceState.at + 1) % traceState.list.length;
+  traceState.strokes = [];
+  traceState.drawing = null;
+  renderTrace();
+}
+function closeTrace(){
+  traceState = null;
+  document.getElementById('traceDlg').close();
+}
+
+(function setupTrace(){
+  const cv = document.getElementById('traceCanvas');
+  const at = e => {
+    const r = cv.getBoundingClientRect();
+    return { x: e.clientX - r.left, y: e.clientY - r.top };
+  };
+  cv.addEventListener('pointerdown', e => {
+    if (!traceState) return;
+    e.preventDefault();
+    cv.setPointerCapture?.(e.pointerId);
+    traceState.drawing = [at(e)];
+    redrawTrace();
+  });
+  cv.addEventListener('pointermove', e => {
+    if (!traceState?.drawing) return;
+    e.preventDefault();
+    traceState.drawing.push(at(e));
+    redrawTrace();
+  });
+  const end = () => {
+    if (!traceState?.drawing) return;
+    traceState.strokes.push(traceState.drawing);
+    traceState.drawing = null;
+    redrawTrace(); renderTraceCount();
+  };
+  cv.addEventListener('pointerup', end);
+  cv.addEventListener('pointercancel', end);
+  cv.addEventListener('pointerleave', end);
+  /* 화면을 돌리거나 크기가 바뀌면 그림판도 다시 잡는다 */
+  window.addEventListener('resize', () => { if (traceState) fitTraceCanvas(); });
+})();
 
 /* ---------- 오늘의 시험 ----------
    문제는 날짜만으로 정해진다. 그래서 온 가족이 같은 날 같은 문제를 풀고,
@@ -1973,11 +2185,33 @@ function quizShuffle(arr, rnd){
   return a;
 }
 
-/* 한 묶음에서 n 문제를 뽑는다. 보기는 같은 묶음 안에서만 고른다 —
-   낱말 문제에 숙어를 섞으면 답이 뻔히 보이기 때문. */
-function quizPick(list, n, rnd, ask, answer, hint){
+/* 날짜를 며칠 옮긴다 (2026-08-01 에서 -1 → 2026-07-31) */
+function shiftDay(dateKey, n){
+  return new Date(Date.parse(dateKey + 'T00:00:00Z') + n * 86400000)
+    .toISOString().slice(0, 10);
+}
+
+/* 최근 며칠 동안 '오늘의 한자·영어' 칸에 나왔던 것들의 자리번호 */
+const QUIZ_RECENT_DAYS = 3;
+function recentIdx(list, dateKey, perDay, days = QUIZ_RECENT_DAYS){
+  const out = [];
+  for (let back = 0; back < days; back++)
+    for (const o of wordsOfDay(list, shiftDay(dateKey, -back), perDay)){
+      const i = list.indexOf(o);
+      if (i >= 0 && !out.includes(i)) out.push(i);
+    }
+  return out;
+}
+
+/* 한 묶음에서 n 문제를 뽑는다. must 에 든 것은 반드시 넣는다
+   (요 며칠 오늘의 한자·영어에 나왔던 것들).
+   보기는 같은 묶음 안에서만 고른다 — 낱말 문제에 숙어를 섞으면 답이 뻔히 보이기 때문. */
+function quizPick(list, n, rnd, ask, answer, hint, must = []){
   const all = [...list.keys()];
-  return quizShuffle(all, rnd).slice(0, n).map(i => {
+  const forced = must.filter(i => i >= 0 && i < list.length).slice(0, n);
+  const rest = quizShuffle(all.filter(i => !forced.includes(i)), rnd)
+    .slice(0, Math.max(0, n - forced.length));
+  return quizShuffle([...forced, ...rest], rnd).map(i => {
     /* 정답과 같은 뜻이 보기에 두 번 나오지 않게 거른다 */
     const wrong = quizShuffle(all.filter(j => j !== i && answer(list[j]) !== answer(list[i])), rnd)
       .slice(0, QUIZ_CHOICES - 1);
@@ -1992,15 +2226,19 @@ function quizPick(list, n, rnd, ask, answer, hint){
 }
 
 /* 그날의 문제 열 개를 만든다.
-   영어는 낱말 다섯 문제 + 숙어 다섯 문제로 낸다. */
+   요 사흘 동안 오늘의 한자·영어 칸에 나왔던 것들이 먼저 들어가고,
+   모자란 만큼만 나머지에서 채운다. 영어는 낱말 다섯 + 숙어 다섯. */
 function quizOfDay(dateKey, kind){
   const rnd = quizRnd(quizSeed(`lhk-quiz:${dateKey}:${kind}`));
   if (kind === 'hanja')
-    return quizPick(HANJA, QUIZ_N, rnd, o => o.c, o => `${o.m} ${o.s}`, '훈과 음은?');
+    return quizPick(HANJA, QUIZ_N, rnd, o => o.c, o => `${o.m} ${o.s}`, '훈과 음은?',
+                    recentIdx(HANJA, dateKey, 2));
 
   const half = QUIZ_N / 2;
-  const words   = quizPick(ENGLISH, half, rnd, o => o.w, o => o.m, '무슨 뜻일까요?');
-  const idioms  = quizPick(IDIOMS,  half, rnd, o => o.w, o => o.m, '무슨 뜻일까요?');
+  const words  = quizPick(ENGLISH, half, rnd, o => o.w, o => o.m, '무슨 뜻일까요?',
+                          recentIdx(ENGLISH, dateKey, 1));
+  const idioms = quizPick(IDIOMS,  half, rnd, o => o.w, o => o.m, '무슨 뜻일까요?',
+                          recentIdx(IDIOMS,  dateKey, 1));
   return quizShuffle([...words, ...idioms], rnd);
 }
 
