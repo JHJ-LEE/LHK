@@ -28,20 +28,51 @@ window.LOCK = (function(){
     }
     return h.toString(36);
   }
-  const KEY = 'family-unlock-v1';
-  const ADMIN = 'blxhnu';    // 관리자 — 공지사항을 고칠 수 있다
-  const USER  = '1h1dtow';   // 일반 이용자 — 보기만 한다
+  const KEY = 'family-user-v1';
+  const OLD = 'family-unlock-v1';        // 예전에 한 개뿐이던 비밀번호를 쓰던 자리
+  /* 가족마다 비밀번호가 다르다. 변환한 값만 적어 둔다 —
+     공개 저장소에 비밀번호가 그대로 남지 않도록. */
+  const CODES = {
+    'blxhnu':  'dad',      // 아빠 — 관리자
+    '15vugq2': 'mom',      // 엄마
+    '14tm58t': 'jun',      // 준
+    'k6xly5':  'hajin',    // 하진
+  };
+  const NOTICE_EDITORS = ['dad', 'mom'];   // 공지는 어른만 고친다
+
   let saved = null;
-  try { saved = localStorage.getItem(KEY); } catch (e) {}
+  try { saved = localStorage.getItem(KEY) || localStorage.getItem(OLD); } catch (e) {}
+  let who = CODES[saved] || null;          // 예전 관리자 비밀번호는 아빠와 같아 그대로 이어진다
 
   const root = document.documentElement;
-  if (saved !== ADMIN && saved !== USER) root.classList.add('locked');
-  if (saved === ADMIN) root.classList.add('admin');
+  function apply(){
+    root.classList.toggle('locked', !who);
+    root.classList.toggle('admin', who === 'dad');
+    root.setAttribute('data-who', who || '');
+  }
+  apply();
 
   return {
-    KEY, ADMIN, USER, hash,
-    roleOf: code => (code === ADMIN ? 'admin' : code === USER ? 'user' : null),
-    isAdmin: () => root.classList.contains('admin'),
+    KEY, OLD, hash,
+    memberOfCode: code => CODES[code] || null,
+    who:     () => who,
+    isAdmin: () => who === 'dad',
+    login(code){
+      const m = CODES[code];
+      if (!m) return null;
+      who = m;
+      try { localStorage.setItem(KEY, code); localStorage.removeItem(OLD); } catch (e) {}
+      apply();
+      return m;
+    },
+    logout(){
+      who = null;
+      try { localStorage.removeItem(KEY); localStorage.removeItem(OLD); } catch (e) {}
+      apply();
+    },
+    /* 자기 것만 고칠 수 있다. 아빠는 관리자라 모두 고칠 수 있다. */
+    canEdit: k => !!who && (who === 'dad' || who === k),
+    canEditNotice: () => !!who && NOTICE_EDITORS.includes(who),
   };
 })();
 </script>
@@ -106,6 +137,25 @@ window.LOCK = (function(){
   .lock-msg{font-size:12.5px;color:var(--muted);min-height:18px}
   .lock-msg.err{color:#ef4444;font-weight:600}
   .lock.shake{animation:shake .35s}
+  /* 누구로 들어갈지 고르는 칸 — 사람마다 자기 색을 쓴다 */
+  .lock-who{display:grid;grid-template-columns:1fr 1fr;gap:9px;width:100%;max-width:290px}
+  .lock-who button{
+    display:flex;align-items:center;justify-content:center;gap:6px;
+    font:inherit;font-size:16px;font-weight:700;padding:14px 8px;cursor:pointer;
+    border-radius:14px;border:1px solid var(--line);background:var(--card);
+    color:var(--c);box-shadow:var(--shadow);transition:.15s;
+  }
+  .lock-who button:hover{border-color:var(--c)}
+  .lock-who button:active{transform:scale(.97)}
+  .lock-who button .dot{width:9px;height:9px;border-radius:50%;background:var(--c);flex:none}
+  .lock-back{
+    font:inherit;font-size:12.5px;color:var(--muted);background:none;border:0;
+    padding:6px 10px;cursor:pointer;text-decoration:underline;
+  }
+  /* 1단계에서는 비밀번호 칸을, 2단계에서는 고르는 칸을 감춘다 */
+  :root:not(.lock-code) #lockInput,
+  :root:not(.lock-code) .lock-back{display:none}
+  :root.lock-code .lock-who{display:none}
   @keyframes shake{
     0%,100%{transform:translateX(0)}
     20%,60%{transform:translateX(-9px)}
@@ -124,6 +174,29 @@ window.LOCK = (function(){
   .sync{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--muted);
     white-space:nowrap;cursor:default;flex:none}
   .sync i{width:8px;height:8px;border-radius:50%;flex:none}
+
+  /* 지금 누구로 들어와 있는지 — 누르면 로그아웃 */
+  .who-chip{
+    display:flex;align-items:center;gap:5px;flex:none;font:inherit;font-size:12px;
+    font-weight:700;color:var(--c);cursor:pointer;white-space:nowrap;
+    padding:2px 9px;border-radius:99px;border:1px solid var(--line);background:var(--card);
+  }
+  .who-chip:hover{border-color:var(--c)}
+  .who-chip::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--c)}
+  .who-chip .out{font-weight:600;color:var(--muted)}
+
+  /* 남의 칸은 눈으로도 구별되게 — 자물쇠를 달고 살짝 흐리게 */
+  .ro-mark{font-size:11px;opacity:.5;margin-left:4px;cursor:help}
+  .card.readonly,
+  .member-block.readonly{background:color-mix(in srgb,var(--card) 92%,var(--muted))}
+  [disabled]{cursor:not-allowed}
+  .card.readonly .time-edit,
+  .card.readonly .say-input,
+  .card.readonly .mood-btn,
+  .member-block.readonly .time-edit,
+  .member-block.readonly .ox,
+  .member-block.readonly .acad,
+  .member-block.readonly .tools{opacity:.6}
 
   .tabs{display:flex;gap:4px;flex:none;background:var(--card);padding:4px;
     border-radius:12px;border:1px solid var(--line)}
@@ -468,6 +541,7 @@ window.LOCK = (function(){
 
   .money-form{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
     padding:16px;margin-top:14px;box-shadow:var(--shadow)}
+  .money-form[hidden]{display:none}
   .kind-toggle{display:flex;gap:6px;margin-bottom:12px}
   .kind-toggle button{
     flex:1;border:1px solid var(--line);background:var(--bg);color:var(--muted);font:inherit;
@@ -573,6 +647,7 @@ window.LOCK = (function(){
     cursor:pointer;font-size:15px;line-height:1;padding:0 2px;flex:none}
   .ev-item .x:hover{opacity:1}
   .add-form{display:grid;grid-template-columns:1fr 96px;gap:7px;margin-top:10px}
+  .add-form[hidden]{display:none}      /* 클래스가 display 를 정해서 따로 적어준다 */
   .add-form select,.add-form input[type=text]{
     font:inherit;font-size:13px;padding:8px;border:1px solid var(--line);
     border-radius:9px;background:var(--bg);color:var(--text);min-width:0}
@@ -594,6 +669,8 @@ window.LOCK = (function(){
     .head-sub{gap:6px;margin-top:1px}
     .sync{font-size:10.5px}
     .sync span{display:none}          /* 좁으면 점 색으로만 알린다 (설명은 길게 누르면 나옴) */
+    .who-chip{font-size:10.5px;padding:1px 7px;gap:4px}
+    .who-chip .out{display:none}      /* 좁으면 이름만 (「로그아웃」 버튼은 설정 화면에) */
     .tabs{gap:2px;padding:3px;border-radius:10px}
     .tabs button{padding:6px 7px;font-size:11.5px;border-radius:8px}
 
@@ -761,10 +838,14 @@ window.LOCK = (function(){
 <div class="lock" id="lockScreen">
   <img class="lock-logo" src="./icon-192.png" alt="" onerror="this.remove()">
   <h2>준&amp;하진이네</h2>
-  <p class="lock-sub">비밀번호를 입력하세요</p>
+  <p class="lock-sub" id="lockSub">누구인지 골라 주세요</p>
+  <!-- 1단계: 가족 중에 고른다 -->
+  <div class="lock-who" id="lockWho"></div>
+  <!-- 2단계: 그 사람의 비밀번호를 넣는다 -->
   <input type="password" id="lockInput" inputmode="numeric" pattern="[0-9]*"
     maxlength="6" autocomplete="off" aria-label="비밀번호">
-  <div class="lock-msg" id="lockMsg">이 기기에서는 처음 한 번만 입력하면 됩니다</div>
+  <div class="lock-msg" id="lockMsg">가족마다 비밀번호가 달라요</div>
+  <button type="button" class="lock-back" id="lockBack" onclick="pickAgain()">← 다른 사람 고르기</button>
 </div>
 
 <div class="wrap">
@@ -775,6 +856,7 @@ window.LOCK = (function(){
       <div class="head-sub">
         <span class="today-label" id="todayLabel"></span>
         <span class="sync" id="syncBadge" title="동기화 상태"></span>
+        <button type="button" class="who-chip" id="whoChip" onclick="logout()"></button>
       </div>
     </div>
     <nav class="tabs">
@@ -826,7 +908,7 @@ window.LOCK = (function(){
 
     <div class="balance" id="balanceCard"></div>
 
-    <div class="money-form">
+    <div class="money-form" id="moneyForm">
       <div class="kind-toggle">
         <button type="button" class="on" id="kindIn"  onclick="setKind('in')">➕ 받았어요</button>
         <button type="button" class="" id="kindOut" onclick="openSpendChoice()">➖ 썼어요</button>
@@ -850,9 +932,12 @@ window.LOCK = (function(){
     <div id="weekEditor"></div>
     <div class="footer-bar">
       <span class="saved" id="savedMsg">변경하면 자동으로 저장됩니다</span>
+      <button class="btn" id="logoutBtn" onclick="logout()">로그아웃</button>
       <button class="btn" onclick="exportJson()">백업 파일 저장</button>
-      <button class="btn" onclick="document.getElementById('importFile').click()">백업 불러오기</button>
-      <button class="btn" onclick="askReset()">전체 초기화</button>
+      <button class="btn" id="importBtn" title="아빠만 할 수 있어요"
+        onclick="document.getElementById('importFile').click()">백업 불러오기</button>
+      <button class="btn" id="resetBtn" title="아빠만 할 수 있어요"
+        onclick="askReset()">전체 초기화</button>
       <input type="file" id="importFile" accept="application/json" hidden onchange="importJson(this)">
     </div>
   </section>
@@ -944,7 +1029,7 @@ window.LOCK = (function(){
 
   <div class="sec-title">특별 일정</div>
   <div id="dayEvents"></div>
-  <div class="add-form">
+  <div class="add-form" id="addForm">
     <select id="addMember"></select>
     <input type="text" id="addTime" inputmode="numeric" maxlength="5" placeholder="시간 (선택)">
     <input type="text" id="addMemo" maxlength="30" placeholder="무슨 일인지 적어주세요">
@@ -1485,6 +1570,7 @@ function refreshStatuses(){
 
 /* 오늘 화면에서 고친 시간은 그 요일의 주간 설정에 그대로 반영된다 */
 function setTodayTime(mKey, field, raw, el){
+  if (!LOCK.canEdit(mKey)){ el.value = data[mKey][DAYS[todayIdx()].key][field] || ''; return; }
   const dayKey = DAYS[todayIdx()].key;
   const v = parseTime(raw);
   if (v === null){                       // 잘못 친 값은 원래대로 되돌린다
@@ -1507,8 +1593,9 @@ function renderToday(){
 
   const di = todayIdx(), day = DAYS[di], now = nowMin();
   const dt = new Date();
+  /* 머리말에 이름표가 함께 놓이므로 요일은 한 글자로 줄여 잘리지 않게 한다 */
   document.getElementById('todayLabel').textContent =
-    `${dt.getMonth()+1}월 ${dt.getDate()}일 ${day.name}`;
+    `${dt.getMonth()+1}월 ${dt.getDate()}일 (${day.short})`;
   const dateKey = ymdOf(dt);
   const todayEvents = events[dateKey] || [];
   const todayMoods = moods[dateKey] || {};
@@ -1529,33 +1616,38 @@ function renderToday(){
     ].filter(Boolean).join('');
     const status = statusOf(m, s, now);
 
+    /* 자기 카드만 고칠 수 있다 (아빠는 관리자라 모두 고칠 수 있다) */
+    const mine = LOCK.canEdit(m.key);
+    const ro = mine ? '' : 'disabled';
+
     /* 기분은 버튼을 눌러 팝업에서 고른다 */
     const mood = moodOf(todayMoods[m.key]);
     const moodPick = `
       <button type="button" class="mood-btn ${mood ? 'on' : ''}"
-        ${mood ? `style="--mb:${mood.bg};--mf:${mood.fg}"` : ''}
+        ${mood ? `style="--mb:${mood.bg};--mf:${mood.fg}"` : ''} ${ro}
         onclick="openMood('${m.key}')">
         <span class="em">${mood ? mood.emoji : '🙂'}</span>${mood ? mood.name : '오늘의 기분'}
       </button>`;
 
     return `
-      <div class="card" style="--c:${m.color}">
+      <div class="card ${mine ? '' : 'readonly'}" style="--c:${m.color}">
         <div class="card-head">
-          <h3><span class="dot"></span>${m.name}</h3>
+          <h3><span class="dot"></span>${m.name}${
+            mine ? '' : `<span class="ro-mark" title="${m.name}만 고칠 수 있어요">🔒</span>`}</h3>
           <span class="status">${status}</span>
         </div>
         <div class="mood-pick">${moodPick}</div>
         <div class="times">
           <label class="time-box">
             <small>${m.goLabel}</small>
-            <input type="text" class="time-edit" inputmode="numeric" maxlength="5"
+            <input type="text" class="time-edit" inputmode="numeric" maxlength="5" ${ro}
               value="${s.go}" placeholder="--:--" aria-label="${m.name} ${m.goLabel} 시간"
               onfocus="this.select()"
               onchange="setTodayTime('${m.key}','go',this.value,this)">
           </label>
           <label class="time-box">
             <small>${m.backLabel}</small>
-            <input type="text" class="time-edit" inputmode="numeric" maxlength="5"
+            <input type="text" class="time-edit" inputmode="numeric" maxlength="5" ${ro}
               value="${s.back}" placeholder="--:--" aria-label="${m.name} ${m.backLabel} 시간"
               onfocus="this.select()"
               onchange="setTodayTime('${m.key}','back',this.value,this)">
@@ -1564,8 +1656,8 @@ function renderToday(){
         <div class="card-badges">${badges}</div>
         <label class="say">
           <span class="say-icon">💬</span>
-          <textarea class="say-input" rows="2" maxlength="60"
-            placeholder="오늘 하고싶은 말"
+          <textarea class="say-input" rows="2" maxlength="60" ${ro}
+            placeholder="${mine ? '오늘 하고싶은 말' : ''}"
             onchange="setSay('${m.key}', this.value)">${esc(todaySays[m.key] || '')}</textarea>
         </label>
       </div>`;
@@ -1663,47 +1755,42 @@ function renderNotice(){
     ta.focus();
     ta.setSelectionRange(ta.value.length, ta.value.length);
   } else {
-    /* 공지는 관리자만 고칠 수 있다. 일반 이용자에게는 읽기 전용으로 보인다. */
-    const admin = LOCK.isAdmin();
+    /* 공지는 아빠·엄마만 고칠 수 있다. 아이들에게는 읽기 전용으로 보인다. */
+    const may = LOCK.canEditNotice();
     box.innerHTML = `
-      <div class="notice-body" ${admin ? 'onclick="startNoticeEdit()"' : ''}>
+      <div class="notice-body" ${may ? 'onclick="startNoticeEdit()"' : ''}>
         <span class="notice-title">오늘의 공지사항</span>
         <div class="notice-text ${notice ? '' : 'blank'}"
-          >${notice ? esc(notice) : (admin ? '눌러서 입력하세요' : '아직 공지가 없어요')}</div>
+          >${notice ? esc(notice) : (may ? '눌러서 입력하세요' : '아직 공지가 없어요')}</div>
       </div>
       <div class="notice-tools">
-        ${admin
+        ${may
           ? `<button class="btn" onclick="startNoticeEdit()">${notice ? '수정' : '입력'}</button>
              ${notice ? `<button class="btn" onclick="clearNotice()">지우기</button>` : ''}`
-          : `<button class="btn" title="관리자만 공지를 고칠 수 있어요"
-               onclick="askAdmin()">🔒</button>`}
+          : `<button class="btn" title="공지는 아빠·엄마만 고칠 수 있어요"
+               onclick="tellNoticeLocked()">🔒</button>`}
       </div>`;
   }
 }
 
-/* 일반 이용자가 관리자 비밀번호를 넣어 권한을 올릴 수 있게 한다 */
-function askAdmin(){
-  document.documentElement.classList.add('locked');
-  const msg = document.getElementById('lockMsg');
-  msg.textContent = '공지를 고치려면 관리자 비밀번호를 입력하세요';
-  msg.classList.remove('err');
-  setTimeout(() => document.getElementById('lockInput').focus(), 60);
+function tellNoticeLocked(){
+  alert('오늘의 공지사항은 아빠·엄마만 고칠 수 있어요.');
 }
 
 function startNoticeEdit(){
-  if (!LOCK.isAdmin()) return;
+  if (!LOCK.canEditNotice()) return;
   noticeEditing = true;
   renderNotice();
 }
 function cancelNoticeEdit(){ noticeEditing = false; renderNotice(); }
 function saveNoticeEdit(){
-  if (!LOCK.isAdmin()) return;
+  if (!LOCK.canEditNotice()) return;
   notice = document.getElementById('noticeInput').value.trim().slice(0, 500);
   noticeEditing = false;
   saveNotice(); renderNotice();
 }
 function clearNotice(){
-  if (!LOCK.isAdmin()) return;
+  if (!LOCK.canEditNotice()) return;
   notice = '';
   saveNotice(); renderNotice();
 }
@@ -1711,6 +1798,7 @@ function clearNotice(){
 /* 저장만 하고 화면은 다시 그리지 않는다 — 입력칸이 이미 그 값을 보여주고 있고,
    다시 그리면 바로 이어서 누른 버튼의 클릭이 사라지기 때문 */
 function setSay(mKey, value){
+  if (!LOCK.canEdit(mKey)) return;
   const key = ymdOf(new Date());
   const text = String(value).trim().slice(0, 60);
   const day = says[key] || (says[key] = {});
@@ -1723,6 +1811,7 @@ function setSay(mKey, value){
 let moodTarget = null;
 
 function openMood(mKey){
+  if (!LOCK.canEdit(mKey)) return;
   moodTarget = mKey;
   const m = memberOf(mKey);
   const cur = (moods[ymdOf(new Date())] || {})[mKey];
@@ -1748,6 +1837,7 @@ function clearMood(){
 
 /* 같은 기분을 다시 누르면 선택 해제된다 */
 function setMood(mKey, moodKey){
+  if (!LOCK.canEdit(mKey)) return;
   const key = ymdOf(new Date());
   const day = moods[key] || (moods[key] = {});
   if (day[mKey] === moodKey) delete day[mKey];
@@ -1849,9 +1939,13 @@ function openDay(key){
 
   renderDayEvents();
 
+  /* 고를 수 있는 사람은 자기 자신뿐이다 (아빠는 관리자라 온가족까지 고를 수 있다) */
+  const pickable = MEMBERS.filter(m => LOCK.canEdit(m.key));
   document.getElementById('addMember').innerHTML =
-    `<option value="all">👨‍👩‍👦‍👦 온가족</option>` +
-    MEMBERS.map(m => `<option value="${m.key}"${m.key === 'dad' ? ' selected' : ''}>${m.name}</option>`).join('');
+    (LOCK.isAdmin() ? `<option value="all">👨‍👩‍👦‍👦 온가족</option>` : '') +
+    pickable.map((m, i) => `<option value="${m.key}"${i === 0 ? ' selected' : ''}>${m.name}</option>`).join('');
+  /* 로그인하지 않았거나 고를 사람이 없으면 넣는 칸을 아예 잠근다 */
+  document.getElementById('addForm').hidden = !pickable.length;
   document.getElementById('addTime').value = '';
   document.getElementById('addMemo').value = '';
 
@@ -1863,11 +1957,13 @@ function renderDayEvents(){
   document.getElementById('dayEvents').innerHTML = list.length
     ? list.map(e => {
         const m = memberOf(e.member);
+        /* 온가족 일정은 관리자만, 나머지는 그 사람(과 관리자)만 지울 수 있다 */
+        const mayDel = e.member === 'all' ? LOCK.isAdmin() : LOCK.canEdit(e.member);
         return `<div class="ev-item" style="--c:${m.color}">
             ${e.time ? `<b class="ev-time">${e.time}</b>` : ''}
             <span>${m.name}</span>
             ${e.memo ? `<span class="memo">${esc(e.memo)}</span>` : ''}
-            <button class="x" title="삭제" onclick="delEvent('${e.id}')">✕</button>
+            ${mayDel ? `<button class="x" title="삭제" onclick="delEvent('${e.id}')">✕</button>` : ''}
           </div>`;
       }).join('')
     : `<div class="empty" style="font-size:13px">등록된 특별 일정이 없습니다.</div>`;
@@ -1882,9 +1978,11 @@ document.getElementById('addBtn').onclick = () => {
     timeEl.focus();
     return;
   }
+  const who = document.getElementById('addMember').value;
+  if (who === 'all' ? !LOCK.isAdmin() : !LOCK.canEdit(who)) return;
   const ev = {
     id: Math.random().toString(36).slice(2),
-    member: document.getElementById('addMember').value,
+    member: who,
     time,
     memo:   document.getElementById('addMemo').value.trim().slice(0, 30),
   };
@@ -1896,6 +1994,9 @@ document.getElementById('addBtn').onclick = () => {
 };
 
 function delEvent(id){
+  const ev = (events[openedDate] || []).find(e => e.id === id);
+  if (!ev) return;
+  if (ev.member === 'all' ? !LOCK.isAdmin() : !LOCK.canEdit(ev.member)) return;
   events[openedDate] = (events[openedDate] || []).filter(e => e.id !== id);
   if (!events[openedDate].length) delete events[openedDate];
   saveEvents();
@@ -1910,6 +2011,8 @@ const won = n => n.toLocaleString('ko-KR') + '원';
 
 function setKid(k){ curKid = k; renderMoney(); }
 
+/* 받았어요/썼어요 전환은 화면 상태일 뿐이라 누구나 눌러도 된다.
+   실제로 적히는 곳(기록하기·영수증·삭제)에서 권한을 본다. */
 function setKind(k){
   curKind = k;
   document.getElementById('kindIn').classList.toggle('on', k === 'in');
@@ -1922,16 +2025,19 @@ function setKind(k){
 
 /* ---------- 지출 입력: 직접 입력 / 영수증 ---------- */
 function openSpendChoice(){
+  if (!LOCK.canEdit(curKid)) return;
   const kid = KIDS.find(k => k.key === curKid);
   document.getElementById('spendWho').textContent = `${kid.emoji} ${kid.name}이가 쓴 돈`;
   document.getElementById('spendDlg').showModal();
 }
 function chooseManual(){
+  if (!LOCK.canEdit(curKid)) return;
   document.getElementById('spendDlg').close();
   setKind('out');
   document.getElementById('mAmount').focus();
 }
 function chooseReceipt(){
+  if (!LOCK.canEdit(curKid)) return;
   document.getElementById('spendDlg').close();
   document.getElementById('receiptFile').click();
 }
@@ -2064,7 +2170,7 @@ let receiptWorker = null;
 async function readReceipt(input){
   const file = input.files[0];
   input.value = '';
-  if (!file) return;
+  if (!file || !LOCK.canEdit(curKid)) return;
 
   const dlg = document.getElementById('receiptDlg');
   const state = document.getElementById('receiptState');
@@ -2139,6 +2245,7 @@ function useCandidate(value, btn){
 }
 
 function saveReceipt(){
+  if (!LOCK.canEdit(curKid)) return;
   const amount = Math.round(Number(document.getElementById('rAmount').value));
   const date = document.getElementById('rDate').value;
   if (!date){ alert('날짜를 골라주세요.'); return; }
@@ -2177,6 +2284,10 @@ function renderMoney(){
   document.getElementById('kidTabs').innerHTML = KIDS.map(k =>
     `<button class="${k.key === curKid ? 'on' : ''}" style="--c:${k.color}"
        onclick="setKid('${k.key}')">${k.emoji} ${k.name}</button>`).join('');
+
+  /* 자기 장부만 고칠 수 있다 (아빠는 관리자라 둘 다 고칠 수 있다) */
+  const myMoney = LOCK.canEdit(curKid);
+  document.getElementById('moneyForm').hidden = !myMoney;
 
   const bal = balanceOf(curKid);
   document.getElementById('balanceCard').style.setProperty('--c', kid.color);
@@ -2220,13 +2331,14 @@ function renderMoney(){
           <small>${c.n}${e.src === 'receipt' ? ' · 🧾 영수증' : ''}</small>
         </span>
         <span class="led-amt ${e.kind}">${e.kind === 'in' ? '+' : '−'}${won(e.amount)}</span>
-        <button class="led-del" title="삭제" onclick="delMoney('${e.id}')">✕</button>
+        ${myMoney ? `<button class="led-del" title="삭제" onclick="delMoney('${e.id}')">✕</button>` : ''}
       </div>`;
   }
   document.getElementById('ledger').innerHTML = html;
 }
 
 document.getElementById('mAddBtn').onclick = () => {
+  if (!LOCK.canEdit(curKid)) return;
   const amtEl = document.getElementById('mAmount');
   const amount = Math.round(Number(amtEl.value));
   const date = document.getElementById('mDate').value;
@@ -2247,6 +2359,7 @@ document.getElementById('mAddBtn').onclick = () => {
 };
 
 function delMoney(id){
+  if (!LOCK.canEdit(curKid)) return;
   money[curKid] = money[curKid].filter(e => e.id !== id);
   saveMoney();
   renderMoney();
@@ -2382,10 +2495,14 @@ function renderFit(){
       : '목표 체중을 정해보세요',
   ].join(' · ');
 
+  /* 자기 운동 기록만 고칠 수 있다 (아빠는 관리자라 모두 고칠 수 있다) */
+  const myFit = LOCK.canEdit(curFit);
+  const fro = myFit ? '' : 'disabled';
+
   document.getElementById('fitWeight').innerHTML = `
     <div class="fit-head">
-      <h2>체중</h2>
-      <button class="btn" onclick="openFitSetup()">⚙ 키·목표</button>
+      <h2>체중${myFit ? '' : ` <span class="ro-mark" title="${m.name}만 고칠 수 있어요">🔒</span>`}</h2>
+      <button class="btn" onclick="openFitSetup()" ${fro}>⚙ 키·목표</button>
     </div>
     <div class="fit-hero" style="--c:${m.color}">
       <b>${cur !== null ? cur.toFixed(1) : '—'}</b><span class="unit">kg</span>
@@ -2396,9 +2513,9 @@ function renderFit(){
     <div class="fit-facts">${facts}</div>
     ${weightChart(curFit, m.color)}
     <div class="fit-form">
-      <input type="number" id="wInput" step="0.1" min="5" max="300" inputmode="decimal"
+      <input type="number" id="wInput" step="0.1" min="5" max="300" inputmode="decimal" ${fro}
         placeholder="오늘 체중" value="${f.w[today] ?? ''}" aria-label="오늘 체중">
-      <button class="btn primary" onclick="saveWeight()">기록</button>
+      <button class="btn primary" onclick="saveWeight()" ${fro}>기록</button>
     </div>`;
 
   /* ── 운동 ── 종목마다 단위가 달라 따로 보여준다 (한 그래프에 섞지 않는다) */
@@ -2431,19 +2548,19 @@ function renderFit(){
   document.getElementById('fitExercise').innerHTML = `
     <div class="fit-head">
       <h2>이번 주 운동</h2>
-      <button class="btn" onclick="openFitSetup()">⚙ 목표</button>
+      <button class="btn" onclick="openFitSetup()" ${fro}>⚙ 목표</button>
     </div>
     ${blocks}
-    ${hasSober(curFit) ? soberBlock(curFit, m.color) : ''}
+    ${hasSober(curFit) ? soberBlock(curFit, m.color, myFit) : ''}
     <div class="fit-form ex">
       ${mine.length > 1
-        ? `<select id="exType" onchange="syncExUnit()">${mine.map(x =>
+        ? `<select id="exType" onchange="syncExUnit()" ${fro}>${mine.map(x =>
              `<option value="${x.k}">${x.e} ${x.n}</option>`).join('')}</select>`
         : `<span class="only-act">${mine[0].e} ${mine[0].n}</span>
            <input type="hidden" id="exType" value="${mine[0].k}">`}
-      <input type="number" id="exAmt" min="1" max="100000" step="1" inputmode="numeric"
+      <input type="number" id="exAmt" min="1" max="100000" step="1" inputmode="numeric" ${fro}
         placeholder="${mine[0].unit}" aria-label="운동량">
-      <button class="btn primary" onclick="addExercise()">기록</button>
+      <button class="btn primary" onclick="addExercise()" ${fro}>기록</button>
     </div>
     <div class="fit-list">
       ${todayList.length
@@ -2454,7 +2571,7 @@ function renderFit(){
                 <span class="em">${x.e}</span>
                 <b>${x.n}</b>
                 <small>${e.amount.toLocaleString('ko-KR')}${x.unit} · ${kcalOf(e.type, e.amount, cur, f)}kcal</small>
-                <button class="x" title="삭제" onclick="delExercise('${e.id}')">✕</button>
+                ${myFit ? `<button class="x" title="삭제" onclick="delExercise('${e.id}')">✕</button>` : ''}
               </div>`;
           }).join('')
         : `<p class="fit-hint">오늘은 아직 기록이 없어요</p>`}
@@ -2474,7 +2591,7 @@ function soberWeek(key){
   });
 }
 
-function soberBlock(key, color){
+function soberBlock(key, color, mayEdit){
   const f = fit[key];
   const days = soberWeek(key);
   const done = days.filter(d => d.done).length;
@@ -2502,13 +2619,14 @@ function soberBlock(key, color){
           </span>`).join('')}
       </div>
       <button type="button" class="btn sober-btn ${todayDone ? 'primary' : ''}"
-        onclick="toggleSober()">
+        onclick="toggleSober()" ${mayEdit ? '' : 'disabled'}>
         ${todayDone ? '✓ 오늘 금주 성공' : '오늘 금주 성공 체크'}
       </button>
     </div>`;
 }
 
 function toggleSober(){
+  if (!LOCK.canEdit(curFit)) return;
   const key = ymdOf(new Date());
   if (fit[curFit].sober[key]) delete fit[curFit].sober[key];
   else fit[curFit].sober[key] = true;
@@ -2527,6 +2645,7 @@ function syncExUnit(){
 }
 
 function saveWeight(){
+  if (!LOCK.canEdit(curFit)) return;
   const el = document.getElementById('wInput');
   const kg = Math.round(Number(el.value) * 10) / 10;
   if (!Number.isFinite(kg) || kg < 5 || kg > 300){
@@ -2540,6 +2659,7 @@ function saveWeight(){
 }
 
 function addExercise(){
+  if (!LOCK.canEdit(curFit)) return;
   const el = document.getElementById('exAmt');
   const type = document.getElementById('exType').value;
   const a = actOf(type);
@@ -2559,12 +2679,14 @@ function addExercise(){
 }
 
 function delExercise(id){
+  if (!LOCK.canEdit(curFit)) return;
   fit[curFit].ex = fit[curFit].ex.filter(e => e.id !== id);
   saveFit();
   renderFit();
 }
 
 function openFitSetup(){
+  if (!LOCK.canEdit(curFit)) return;
   const f = fit[curFit];
   document.getElementById('fitSetupTitle').textContent = `${memberOf(curFit).name} 설정`;
   document.getElementById('fHeight').value = f.height ?? '';
@@ -2591,6 +2713,7 @@ function openFitSetup(){
 }
 
 function saveFitSetup(){
+  if (!LOCK.canEdit(curFit)) return;
   const pick = (id, lo, hi) => {
     const n = Number(document.getElementById(id).value);
     return Number.isFinite(n) && n >= lo && n <= hi ? n : null;
@@ -2611,14 +2734,18 @@ function saveFitSetup(){
 /* ---------- 주간 설정 ---------- */
 function renderWeek(){
   const di = todayIdx();
-  document.getElementById('weekEditor').innerHTML = MEMBERS.map(m => `
-    <div class="member-block" style="--c:${m.color}">
+  document.getElementById('weekEditor').innerHTML = MEMBERS.map(m => {
+  /* 자기 시간표만 고칠 수 있다 (아빠는 관리자라 모두 고칠 수 있다) */
+  const mine = LOCK.canEdit(m.key);
+  const ro = mine ? '' : 'disabled';
+  return `
+    <div class="member-block ${mine ? '' : 'readonly'}" style="--c:${m.color}">
       <div class="member-head">
         <span class="dot"></span>
-        <h3>${m.name}</h3>
+        <h3>${m.name}${mine ? '' : `<span class="ro-mark" title="${m.name}만 고칠 수 있어요">🔒</span>`}</h3>
         <div class="tools">
-          <button class="btn" onclick="fillWeekdays('${m.key}')">월요일 → 평일 전체</button>
-          <button class="btn" onclick="clearMember('${m.key}')">비우기</button>
+          <button class="btn" onclick="fillWeekdays('${m.key}')" ${ro}>월요일 → 평일 전체</button>
+          <button class="btn" onclick="clearMember('${m.key}')" ${ro}>비우기</button>
         </div>
       </div>
       <div class="table-scroll">
@@ -2648,20 +2775,20 @@ function renderWeek(){
             const s = data[m.key][d.key];
             const extra = m.role === 'parent'
               ? flagsOf(m).map(f => `<td><button type="button" class="ox ${s[f.key] ? 'on' : ''}"
-                   style="--ox:${f.on}" title="${f.badge}"
+                   style="--ox:${f.on}" title="${f.badge}" ${ro}
                    onclick="toggleFlag('${m.key}','${d.key}','${f.key}')"
                    >${s[f.key] ? 'O' : 'X'}</button></td>`).join('')
               : `<td><div class="acad-wrap">${acadList(m.key).map(a =>
-                   `<button type="button" class="acad ${s.academies.includes(a) ? 'on' : ''}"
+                   `<button type="button" class="acad ${s.academies.includes(a) ? 'on' : ''}" ${ro}
                       onclick="toggleAcademy('${m.key}','${d.key}','${a}')">${a}</button>`).join('')}</div></td>`;
             return `
             <tr class="${i>=5?'weekend':''} ${i===di?'today':''}">
               <td>${d.short}</td>
-              <td><input type="text" class="time-edit wk" inputmode="numeric" maxlength="5"
+              <td><input type="text" class="time-edit wk" inputmode="numeric" maxlength="5" ${ro}
                     value="${s.go}" placeholder="--:--" onfocus="this.select()"
                     aria-label="${m.name} ${d.name} ${m.goLabel} 시간"
                     onchange="setWeekTime('${m.key}','${d.key}','go',this.value,this)"></td>
-              <td><input type="text" class="time-edit wk" inputmode="numeric" maxlength="5"
+              <td><input type="text" class="time-edit wk" inputmode="numeric" maxlength="5" ${ro}
                     value="${s.back}" placeholder="--:--" onfocus="this.select()"
                     aria-label="${m.name} ${d.name} ${m.backLabel} 시간"
                     onchange="setWeekTime('${m.key}','${d.key}','back',this.value,this)"></td>
@@ -2671,10 +2798,12 @@ function renderWeek(){
         </tbody>
       </table>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 function setTime(mKey, dKey, field, value){
+  if (!LOCK.canEdit(mKey)) return;
   data[mKey][dKey][field] = value;
   save();
   renderToday();
@@ -2682,6 +2811,7 @@ function setTime(mKey, dKey, field, value){
 
 /* 주간 설정에서도 오늘 화면처럼 편한 대로 쳐서 넣는다 */
 function setWeekTime(mKey, dKey, field, raw, el){
+  if (!LOCK.canEdit(mKey)) return;
   const v = parseTime(raw);
   if (v === null){
     el.value = data[mKey][dKey][field] || '';
@@ -2695,10 +2825,12 @@ function setWeekTime(mKey, dKey, field, raw, el){
   renderToday();
 }
 function toggleFlag(mKey, dKey, field){
+  if (!LOCK.canEdit(mKey)) return;
   data[mKey][dKey][field] = !data[mKey][dKey][field];
   save(); renderWeek(); renderToday();
 }
 function toggleAcademy(mKey, dKey, name){
+  if (!LOCK.canEdit(mKey)) return;
   const slot = data[mKey][dKey];
   const set = new Set(slot.academies);
   if (set.has(name)) set.delete(name); else set.add(name);
@@ -2706,11 +2838,13 @@ function toggleAcademy(mKey, dKey, name){
   save(); renderWeek(); renderToday();
 }
 function fillWeekdays(mKey){
+  if (!LOCK.canEdit(mKey)) return;
   const src = data[mKey].mon;
   for (const d of WEEKDAYS) data[mKey][d] = copySlot(src);
   save(); renderWeek(); renderToday();
 }
 function clearMember(mKey){
+  if (!LOCK.canEdit(mKey)) return;
   for (const d of DAYS) data[mKey][d.key] = blankSlot();
   save(); renderWeek(); renderToday();
 }
@@ -2736,7 +2870,13 @@ function summarize(parsed){
   return `시간표 ${times}칸 · 특별 일정 ${ev}건 · 용돈 기록 ${mn}건`;
 }
 
+/* 불러오기·초기화는 온 가족 자료를 통째로 갈아엎으므로 관리자(아빠)만 할 수 있다 */
 function importJson(input){
+  if (!LOCK.isAdmin()){
+    input.value = '';
+    alert('백업 불러오기는 아빠만 할 수 있어요.');
+    return;
+  }
   const file = input.files[0];
   if (!file) return;
   const reader = new FileReader();
@@ -2754,6 +2894,7 @@ function importJson(input){
 
 /* 불러오기는 덮어쓰기다 — 반드시 확인을 받는다 */
 function askImport(parsed, fileName){
+  if (!LOCK.isAdmin()) return;
   const dlg = document.getElementById('confirmDlg');
   document.getElementById('confirmText').innerHTML =
     `<b>${esc(fileName)}</b><br>
@@ -2784,6 +2925,7 @@ function askImport(parsed, fileName){
 }
 
 function askReset(){
+  if (!LOCK.isAdmin()){ alert('전체 초기화는 아빠만 할 수 있어요.'); return; }
   const dlg = document.getElementById('confirmDlg');
   document.getElementById('confirmText').textContent =
     '주간 시간표가 기본값으로 돌아가고, 달력의 특별 일정도 모두 삭제됩니다. (용돈 기록은 지워지지 않습니다) 계속할까요?';
@@ -2923,15 +3065,71 @@ const splashDone = (function setupSplash(){
   });
 })();
 
-/* ---------- 비밀번호 잠금 ---------- */
+/* ---------- 로그인 · 로그아웃 ---------- */
+let loginPick = null;             // 2단계에서 비밀번호를 기다리는 사람
+
+/* 1단계로 되돌린다 */
+function pickAgain(){
+  loginPick = null;
+  document.documentElement.classList.remove('lock-code');
+  document.getElementById('lockInput').value = '';
+  document.getElementById('lockSub').textContent = '누구인지 골라 주세요';
+  const msg = document.getElementById('lockMsg');
+  msg.textContent = '가족마다 비밀번호가 달라요';
+  msg.classList.remove('err');
+}
+
+/* 2단계 — 고른 사람의 비밀번호를 받는다 */
+function pickLogin(mKey){
+  const m = memberOf(mKey);
+  if (!m) return;
+  loginPick = mKey;
+  document.documentElement.classList.add('lock-code');
+  document.getElementById('lockSub').textContent = `${m.name}의 비밀번호를 입력하세요`;
+  const msg = document.getElementById('lockMsg');
+  msg.textContent = '여섯 자리를 누르면 바로 들어갑니다';
+  msg.classList.remove('err');
+  const input = document.getElementById('lockInput');
+  input.value = '';
+  setTimeout(() => input.focus(), 60);
+}
+
+function logout(){
+  const m = memberOf(LOCK.who());
+  if (!m) return;
+  const dlg = document.getElementById('confirmDlg');
+  document.getElementById('confirmText').textContent =
+    `${m.name}에서 로그아웃할까요? 적어둔 내용은 그대로 남아 있어요.`;
+  const ok = document.getElementById('confirmOk');
+  ok.textContent = '로그아웃';
+  ok.onclick = () => {
+    dlg.close();
+    doLogout();
+  };
+  dlg.showModal();
+}
+
+function doLogout(){
+  LOCK.logout();
+  pickAgain();
+  renderAll();
+}
+
+function renderLockWho(){
+  document.getElementById('lockWho').innerHTML = MEMBERS.map(m =>
+    `<button type="button" style="--c:${m.color}" onclick="pickLogin('${m.key}')">
+       <span class="dot"></span>${m.name}
+     </button>`).join('');
+}
+
 (function setupLock(){
   const box = document.getElementById('lockScreen');
   const input = document.getElementById('lockInput');
   const msg = document.getElementById('lockMsg');
-  const isLocked = () => document.documentElement.classList.contains('locked');
 
-  /* 첫 화면이 떠 있는 동안에는 자판이 올라오지 않도록, 끝난 뒤에 커서를 놓는다 */
-  if (isLocked()) splashDone.then(() => setTimeout(() => input.focus(), 60));
+  renderLockWho();
+  /* 1단계에는 입력칸이 없으니 자판이 올라오지 않는다.
+     비밀번호 칸은 사람을 고른 뒤(pickLogin)에야 커서를 받는다. */
 
   input.addEventListener('input', () => {
     const v = input.value.replace(/[^0-9]/g, '');
@@ -2940,16 +3138,13 @@ const splashDone = (function setupSplash(){
     if (v.length < 6) return;
 
     const code = LOCK.hash(v);
-    const role = LOCK.roleOf(code);
-    if (role){
-      try { localStorage.setItem(LOCK.KEY, code); } catch (e) {}
-      document.documentElement.classList.remove('locked');
-      document.documentElement.classList.toggle('admin', role === 'admin');
+    /* 고른 사람의 비밀번호와 맞아야 한다 — 남의 비밀번호로는 들어갈 수 없다 */
+    if (LOCK.memberOfCode(code) === loginPick && LOCK.login(code)){
       input.value = '';
       input.blur();
-      msg.textContent = '이 기기에서는 처음 한 번만 입력하면 됩니다';
-      renderNotice();                   // 권한에 따라 수정 버튼이 달라진다
-      renderToday();                    // 잠금 중 멈춰 있던 화면을 새로 맞춘다
+      document.documentElement.classList.remove('lock-code');
+      loginPick = null;
+      renderAll();                      // 권한에 따라 고칠 수 있는 칸이 달라진다
     } else {
       box.classList.add('shake');
       setTimeout(() => box.classList.remove('shake'), 400);
@@ -2961,8 +3156,29 @@ const splashDone = (function setupSplash(){
 })();
 
 function renderAll(){
+  renderWho();
   if (!noticeEditing) renderNotice();   // 입력 중인 공지는 건드리지 않는다
   renderToday(); renderMonth(); renderFit(); renderMoney(); renderWeek();
+}
+
+/* 머리말에 지금 들어와 있는 사람을 보여준다 */
+function renderWho(){
+  /* 온 가족 자료를 통째로 갈아엎는 버튼은 관리자(아빠)에게만 열어 둔다 */
+  for (const id of ['importBtn', 'resetBtn'])
+    document.getElementById(id).disabled = !LOCK.isAdmin();
+
+  const chip = document.getElementById('whoChip');
+  const m = memberOf(LOCK.who());
+  document.getElementById('logoutBtn').hidden = !m;
+  if (!m){ chip.hidden = true; return; }
+  chip.hidden = false;
+  chip.style.setProperty('--c', m.color);
+  chip.title = `${m.name}(으)로 들어와 있어요 · 눌러서 로그아웃`;
+  /* 좁은 화면에서는 이름만 — 눌러서 나가는 것은 그대로이고,
+     글자로 된 「로그아웃」 버튼은 설정 화면 아래에 따로 있다 */
+  chip.innerHTML = `${m.name}<span class="out">로그아웃</span>`;
+  const btn = document.getElementById('logoutBtn');
+  if (btn) btn.textContent = `${m.name} 로그아웃`;
 }
 
 /* ---------- 동기화 계층과의 연결 ---------- */
@@ -3004,6 +3220,7 @@ window.familyApp = {
 };
 
 setSyncStatus('local');
+renderWho();
 renderNotice();
 renderToday();
 renderMonth();
