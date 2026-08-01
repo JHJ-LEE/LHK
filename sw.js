@@ -40,3 +40,14 @@ self.addEventListener('fetch', e => {
       .catch(() => caches.match(e.request).then(hit => hit || caches.match('./index.html')))
   );
 });
+
+/* 알림을 누르면 이미 열려 있는 앱으로 가고, 없으면 새로 연다 */
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  e.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+      for (const c of list) if ('focus' in c) return c.focus();
+      if (self.clients.openWindow) return self.clients.openWindow('./');
+    })
+  );
+});

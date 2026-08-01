@@ -185,6 +185,25 @@ window.LOCK = (function(){
   .who-chip::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--c)}
   .who-chip .out{font-weight:600;color:var(--muted)}
 
+  /* ---- 가족이 새로 바꾼 곳 표시 ---- */
+  .new-chip{
+    display:inline-block;vertical-align:middle;margin-left:5px;flex:none;
+    font-size:9px;font-weight:800;letter-spacing:.3px;line-height:1.6;
+    padding:0 5px;border-radius:99px;background:#ef4444;color:#fff;
+    animation:newPop .3s cubic-bezier(.2,1.4,.4,1);
+  }
+  @keyframes newPop{ from{transform:scale(.5);opacity:0} to{transform:scale(1);opacity:1} }
+  /* 탭 이름 옆의 작은 점 — 그 화면 어딘가에 새 소식이 있다 */
+  .tabs button{position:relative}
+  .tabs button.has-new::after{
+    content:'';position:absolute;top:3px;right:3px;width:6px;height:6px;
+    border-radius:50%;background:#ef4444;
+  }
+  /* 달력에서 새로 들어온 날 */
+  .cell.is-new{box-shadow:inset 0 0 0 2px #ef4444}
+  .cell.is-new .num::after{content:'';display:inline-block;width:5px;height:5px;
+    border-radius:50%;background:#ef4444;margin-left:3px;vertical-align:top}
+
   /* 남의 칸은 눈으로도 구별되게 — 자물쇠를 달고 살짝 흐리게 */
   .ro-mark{font-size:11px;opacity:.5;margin-left:4px;cursor:help}
   .card.readonly,
@@ -341,16 +360,18 @@ window.LOCK = (function(){
   .word-box{background:var(--card);border:1px solid var(--line);border-radius:14px;
     padding:10px 12px;box-shadow:var(--shadow);min-width:0}
   .word-label{display:block;font-size:10.5px;font-weight:800;letter-spacing:.4px;
-    color:var(--muted);margin-bottom:6px}
+    color:var(--muted);margin-bottom:9px}
   .word-row{display:flex;align-items:center;gap:7px;min-width:0;min-height:var(--row-h)}
   /* 구분선을 테두리로 그리면 그만큼 줄 높이가 늘어 한자 칸과 영어 칸이 어긋난다.
-     높이에 영향을 주지 않는 배경선으로 그린다. */
+     높이에 영향을 주지 않는 배경선으로 그린다.
+     낱말과 뜻이 붙어 있는 만큼, 낱말끼리는 위아래로 넉넉히 띄워야
+     어느 뜻이 어느 낱말의 것인지 한눈에 들어온다. */
   .word-row + .word-row{
-    margin-top:5px;
+    margin-top:9px;padding-top:9px;
     background:linear-gradient(var(--line), var(--line)) top/100% 1px no-repeat;
   }
-  .word-txt{display:flex;flex-direction:column;justify-content:center;gap:1px;
-    flex:1;min-width:0;line-height:1.25}
+  .word-txt{display:flex;flex-direction:column;justify-content:center;gap:2px;
+    flex:1;min-width:0;line-height:1.3}
   .word-row b{font-size:14px;font-weight:700;min-width:0;
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .word-row small{font-size:11.5px;color:var(--muted);min-width:0;
@@ -766,9 +787,9 @@ window.LOCK = (function(){
     /* 단어 칸은 카드 위에 낮게 한 줄로 */
     .words{gap:7px;margin:0 0 8px;--row-h:26px}
     .word-box{padding:5px 9px;border-radius:11px}
-    .word-label{font-size:9.5px;margin-bottom:2px}
+    .word-label{font-size:9.5px;margin-bottom:3px}
     .word-row{gap:6px}
-    .word-row + .word-row{margin-top:3px}
+    .word-row + .word-row{margin-top:4px;padding-top:4px}
     .word-txt{gap:0;line-height:1.2}
     .word-row b{font-size:12px}
     .word-row small{font-size:10.5px}
@@ -841,7 +862,7 @@ window.LOCK = (function(){
     .card h3{font-size:13px}
     .status{font-size:9.5px}
     .card-badges{min-height:20px;margin-top:4px;padding-top:4px}
-    .words{margin-bottom:6px;gap:6px;--row-h:24px}
+    .words{margin-bottom:4px;gap:6px;--row-h:24px}
     .mood-pick{margin-bottom:4px}
     .mood-btn{padding:3px 7px;font-size:10.5px;gap:4px}
     .mood-btn .em{font-size:13px}
@@ -857,9 +878,9 @@ window.LOCK = (function(){
     .card-badges .chip{font-size:9px;padding:0 3px}
     .say{margin-top:4px}
     .say-input{font-size:9.5px;padding:2px 5px}
-    .word-box{padding:4px 8px}
+    .word-box{padding:3px 8px}
     .word-label{font-size:9px;margin-bottom:2px}
-    .word-row + .word-row{margin-top:3px}
+    .word-row + .word-row{margin-top:3px;padding-top:3px}
     .hanja-char{font-size:18px;width:22px}
     .word-txt{line-height:1.15}
     .word-row b{font-size:11.5px}
@@ -1011,6 +1032,7 @@ window.LOCK = (function(){
     <div id="weekEditor"></div>
     <div class="footer-bar">
       <span class="saved" id="savedMsg">변경하면 자동으로 저장됩니다</span>
+      <button class="btn" id="notifyBtn" onclick="askNotify()">🔔 알림 켜기</button>
       <button class="btn" id="logoutBtn" onclick="logout()">로그아웃</button>
       <button class="btn" onclick="exportJson()">백업 파일 저장</button>
       <button class="btn" id="importBtn" title="아빠만 할 수 있어요"
@@ -1756,7 +1778,8 @@ function renderToday(){
       <div class="card ${mine ? '' : 'readonly'}" style="--c:${m.color}">
         <div class="card-head">
           <h3><span class="dot"></span>${m.name}${
-            mine ? '' : `<span class="ro-mark" title="${m.name}만 고칠 수 있어요">🔒</span>`}</h3>
+            mine ? '' : `<span class="ro-mark" title="${m.name}만 고칠 수 있어요">🔒</span>`}${
+            newChip(`today:${m.key}`)}</h3>
           <span class="status">${status}</span>
         </div>
         <div class="mood-pick">${moodPick}</div>
@@ -2072,7 +2095,7 @@ function renderNotice(){
     const may = LOCK.canEditNotice();
     box.innerHTML = `
       <div class="notice-body" ${may ? 'onclick="startNoticeEdit()"' : ''}>
-        <span class="notice-title">오늘의 공지사항</span>
+        <span class="notice-title">오늘의 공지사항${newChip('notice')}</span>
         <div class="notice-text ${notice ? '' : 'blank'}"
           >${notice ? esc(notice) : (may ? '눌러서 입력하세요' : '아직 공지가 없어요')}</div>
       </div>
@@ -2193,6 +2216,7 @@ function renderMonth(){
     if (dow === 6) cls.push('sat');
     if (hol) cls.push('holiday');
     if (key === todayKey) cls.push('today');
+    if (hasNew(`month:${key}`)) cls.push('is-new');   // 가족이 새로 넣은 날
 
     /* 색은 사람을 구분한다. 첫 줄에 이름과 시간, 둘째 줄에 메모를 적는다. */
     const chips = shown.map(e => {
@@ -2322,7 +2346,7 @@ let curKind = 'in';
 
 const won = n => n.toLocaleString('ko-KR') + '원';
 
-function setKid(k){ curKid = k; renderMoney(); }
+function setKid(k){ curKid = k; renderMoney(); scheduleSeen(); }
 
 /* 받았어요/썼어요 전환은 화면 상태일 뿐이라 누구나 눌러도 된다.
    실제로 적히는 곳(기록하기·영수증·삭제)에서 권한을 본다. */
@@ -2596,7 +2620,7 @@ function renderMoney(){
 
   document.getElementById('kidTabs').innerHTML = KIDS.map(k =>
     `<button class="${k.key === curKid ? 'on' : ''}" style="--c:${k.color}"
-       onclick="setKid('${k.key}')">${k.emoji} ${k.name}</button>`).join('');
+       onclick="setKid('${k.key}')">${k.emoji} ${k.name}${newChip(`money:${k.key}`)}</button>`).join('');
 
   /* 자기 장부만 고칠 수 있다 (아빠는 관리자라 둘 다 고칠 수 있다) */
   const myMoney = LOCK.canEdit(curKid);
@@ -2680,7 +2704,7 @@ function delMoney(id){
 
 /* ---------- 운동 ---------- */
 let curFit = 'dad';
-function setFitMember(k){ curFit = k; renderFit(); }
+function setFitMember(k){ curFit = k; renderFit(); scheduleSeen(); }
 
 /* 바퀴·타임·횟수를 시간으로 환산해 소모 열량을 어림한다 */
 const minutesOf = (type, amount, f) =>
@@ -2791,7 +2815,7 @@ function renderFit(){
 
   document.getElementById('fitTabs').innerHTML = MEMBERS.map(x =>
     `<button class="${x.key === curFit ? 'on' : ''}" style="--c:${x.color}"
-       onclick="setFitMember('${x.key}')">${x.name}</button>`).join('');
+       onclick="setFitMember('${x.key}')">${x.name}${newChip(`fit:${x.key}`)}</button>`).join('');
 
   /* ── 체중 ── */
   const series = weightSeries(curFit);
@@ -3055,7 +3079,8 @@ function renderWeek(){
     <div class="member-block ${mine ? '' : 'readonly'}" style="--c:${m.color}">
       <div class="member-head">
         <span class="dot"></span>
-        <h3>${m.name}${mine ? '' : `<span class="ro-mark" title="${m.name}만 고칠 수 있어요">🔒</span>`}</h3>
+        <h3>${m.name}${mine ? '' : `<span class="ro-mark" title="${m.name}만 고칠 수 있어요">🔒</span>`}${
+          newChip(`week:${m.key}`)}</h3>
         <div class="tools">
           <button class="btn" onclick="fillWeekdays('${m.key}')" ${ro}>월요일 → 평일 전체</button>
           <button class="btn" onclick="clearMember('${m.key}')" ${ro}>비우기</button>
@@ -3354,7 +3379,37 @@ function showTab(which, dir){
     document.getElementById('panel' + t[0].toUpperCase() + t.slice(1)).classList.toggle('on', on);
     document.getElementById('tab'   + t[0].toUpperCase() + t.slice(1)).classList.toggle('on', on);
   }
+  renderTabDots();
+  scheduleSeen();
 }
+
+/* 탭 이름 옆에 빨간 점 — 그 화면 어딘가에 새 소식이 있다는 뜻 */
+function renderTabDots(){
+  for (const t of TAB_ORDER)
+    document.getElementById('tab' + t[0].toUpperCase() + t.slice(1))
+      .classList.toggle('has-new', hasNew(t));
+}
+
+/* 화면을 잠깐 들여다보면 그 자리의 NEW 표시를 지운다.
+   공지는 어느 탭에서나 늘 보이므로 함께 지운다.
+   보고 있는 도중에 새로 뜬 것은 눈에 띄도록 조금 더 오래 남긴다. */
+let seenTimer = null;
+function scheduleSeen(ms = 1500){
+  clearTimeout(seenTimer);
+  if (document.documentElement.classList.contains('locked')) return;
+  if (document.hidden) return;                 // 다른 화면을 보고 있으면 읽은 게 아니다
+  seenTimer = setTimeout(() => {
+    if (document.hidden) return;
+    /* 운동·용돈은 지금 보고 있는 사람 것만 읽은 것으로 친다 */
+    const here = curTab === 'fit'   ? `fit:${curFit}`
+               : curTab === 'money' ? `money:${curKid}`
+               : curTab;
+    clearNew(['notice', here]);
+  }, ms);
+}
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) scheduleSeen(4000);
+});
 
 document.getElementById('mDate').value = ymdOf(new Date());
 setKind('in');
@@ -3460,6 +3515,7 @@ function renderLockWho(){
       document.documentElement.classList.remove('lock-code');
       loginPick = null;
       renderAll();                      // 권한에 따라 고칠 수 있는 칸이 달라진다
+      scheduleSeen(5000);               // 그동안 쌓인 NEW 표시를 잠시 보여준다
     } else {
       box.classList.add('shake');
       setTimeout(() => box.classList.remove('shake'), 400);
@@ -3472,6 +3528,8 @@ function renderLockWho(){
 
 function renderAll(){
   renderWho();
+  renderTabDots();
+  renderNotifyBtn();
   if (!noticeEditing) renderNotice();   // 입력 중인 공지는 건드리지 않는다
   renderToday(); renderMonth(); renderFit(); renderMoney(); renderWeek();
 }
@@ -3496,6 +3554,196 @@ function renderWho(){
   if (btn) btn.textContent = `${m.name} 로그아웃`;
 }
 
+/* ---------- 누가 무엇을 바꿨는지 (NEW 표시 · 알림) ----------
+   원격에서 온 내용을 반영하기 직전에 지금 것과 견주어, 달라진 자리를 적어 둔다.
+   적어 둔 자리는 그 화면을 볼 때까지 남아 있다. 기기마다 따로이므로 동기화하지 않는다. */
+const NEW_KEY = 'family-new-v1';
+let newMarks = (function(){
+  try{
+    const raw = JSON.parse(localStorage.getItem(NEW_KEY));
+    if (!raw || typeof raw !== 'object') return {};
+    const out = {};
+    for (const [spot, v] of Object.entries(raw))
+      if (v && typeof v === 'object') out[spot] = { by: String(v.by || ''), at: Number(v.at) || 0 };
+    return out;
+  }catch(e){ return {}; }
+})();
+function saveNewMarks(){ try{ localStorage.setItem(NEW_KEY, JSON.stringify(newMarks)); }catch(e){} }
+
+/* 자리마다 어느 탭에 속하는지, 사람이 읽을 이름은 무엇인지 */
+function spotTab(spot){
+  const head = spot.split(':')[0];
+  return { notice:null, today:'today', month:'month', fit:'fit', money:'money', week:'week' }[head] ?? null;
+}
+function spotName(spot){
+  const [head, arg] = spot.split(':');
+  const who = arg ? (memberOf(arg)?.name || '') : '';
+  if (head === 'notice') return '오늘의 공지사항';
+  if (head === 'today')  return `${who}의 오늘 칸`;
+  if (head === 'week')   return `${who}의 주간 설정`;
+  if (head === 'fit')    return `${who}의 운동 기록`;
+  if (head === 'money')  return `${who}의 용돈기입장`;
+  if (head === 'month')  return '달력 일정';
+  return '';
+}
+
+/* 이름 뒤에 붙는 조사 — 받침이 있으면 '이', 없으면 '가' (준이 / 엄마가) */
+function withSubject(name){
+  const c = name.charCodeAt(name.length - 1);
+  if (c < 0xac00 || c > 0xd7a3) return name + '가';
+  return name + ((c - 0xac00) % 28 ? '이' : '가');
+}
+
+/* 값이 같은지 본다. JSON 글자로 견주면 키 순서만 달라도 다르다고 나오므로
+   (mergeWeekly 가 키를 다시 짜면서 순서가 바뀐다) 하나하나 짚어 본다. */
+function sameJson(a, b){
+  if (a === b) return true;
+  if (a == null || b == null) return a == null && b == null;
+  if (typeof a !== 'object' || typeof b !== 'object') return false;
+  if (Array.isArray(a) !== Array.isArray(b)) return false;
+  if (Array.isArray(a)){
+    return a.length === b.length && a.every((v, i) => sameJson(v, b[i]));
+  }
+  const ka = Object.keys(a), kb = Object.keys(b);
+  if (ka.length !== kb.length) return false;
+  return ka.every(k => Object.prototype.hasOwnProperty.call(b, k) && sameJson(a[k], b[k]));
+}
+
+/* 원격 내용과 지금 내용을 견주어 달라진 자리를 모은다 */
+function whatChanged(remote){
+  const spots = new Set();
+  const today = ymdOf(new Date());
+
+  if (typeof remote.notice === 'string' && remote.notice.slice(0, 500) !== notice)
+    spots.add('notice');
+
+  if (remote.weekly){
+    const next = mergeWeekly(remote.weekly);
+    for (const m of MEMBERS){
+      if (sameJson(next[m.key], data[m.key])) continue;
+      spots.add(`week:${m.key}`);
+      /* 오늘 요일이 바뀌었다면 오늘 칸에도 표시한다 */
+      const dk = DAYS[todayIdx()].key;
+      if (!sameJson(next[m.key][dk], data[m.key][dk])) spots.add(`today:${m.key}`);
+    }
+  }
+  if (remote.events){
+    const next = cleanEvents(remote.events);
+    for (const date of new Set([...Object.keys(next), ...Object.keys(events)]))
+      if (!sameJson(next[date], events[date])) spots.add(`month:${date}`);
+  }
+  if (remote.money){
+    const next = cleanMoney(remote.money);
+    for (const k of KIDS) if (!sameJson(next[k.key], money[k.key])) spots.add(`money:${k.key}`);
+  }
+  if (remote.fit){
+    const next = cleanFit(remote.fit);
+    for (const m of MEMBERS) if (!sameJson(next[m.key], fit[m.key])) spots.add(`fit:${m.key}`);
+  }
+  /* 기분·하고싶은 말·시험 점수는 오늘 것만 본다 */
+  for (const [key, cur, clean] of [['moods', moods, cleanMoods], ['says', says, cleanSays],
+                                   ['quiz', quiz, cleanQuiz]]){
+    if (!remote[key]) continue;
+    const next = clean(remote[key]);
+    for (const m of MEMBERS)
+      if (!sameJson(next[today]?.[m.key], cur[today]?.[m.key])) spots.add(`today:${m.key}`);
+  }
+  return [...spots];
+}
+
+/* 달라진 자리를 적어 두고, 알림이 켜져 있으면 알려준다 */
+function markNew(spots, by){
+  if (!spots || !spots.length) return;
+  const at = Date.now();
+  for (const s of spots) newMarks[s] = { by: by || '', at };
+  saveNewMarks();
+  notifyChange(spots, by);
+  scheduleSeen(6000);          // 보고 있는 화면이면 잠시 보여주고 지운다
+}
+
+const hasNew = prefix => Object.keys(newMarks)
+  .some(s => s === prefix || s.startsWith(prefix + ':'));
+const newBy = prefix => {
+  const s = Object.keys(newMarks).find(k => k === prefix || k.startsWith(prefix + ':'));
+  return s ? (memberOf(newMarks[s].by)?.name || '') : '';
+};
+
+/* 화면에 붙일 NEW 딱지 */
+function newChip(prefix){
+  if (!hasNew(prefix)) return '';
+  const who = newBy(prefix);
+  return `<span class="new-chip" title="${
+    who ? withSubject(who) + ' 바꿨어요' : '새로 바뀌었어요'}">NEW</span>`;
+}
+
+/* 그 자리를 봤으면 표시를 지운다 */
+function clearNew(prefixes){
+  let hit = false;
+  for (const p of [].concat(prefixes))
+    for (const s of Object.keys(newMarks))
+      if (s === p || s.startsWith(p + ':')){ delete newMarks[s]; hit = true; }
+  if (hit){ saveNewMarks(); renderAll(); }
+  return hit;
+}
+function clearAllNew(){ newMarks = {}; saveNewMarks(); renderAll(); }
+
+/* ---------- 알림 ---------- */
+function notifyState(){
+  if (!('Notification' in window)) return 'unsupported';
+  return Notification.permission;                       // granted | denied | default
+}
+async function askNotify(){
+  if (!('Notification' in window)){
+    alert('이 브라우저는 알림을 지원하지 않아요.');
+    return;
+  }
+  if (Notification.permission === 'denied'){
+    alert('브라우저 설정에서 이 사이트의 알림을 막아 두었어요.\n설정에서 알림을 허용해 주세요.');
+    return;
+  }
+  try{ await Notification.requestPermission(); }catch(e){}
+  renderNotifyBtn();
+  if (Notification.permission === 'granted')
+    showNotice('알림 켜짐', '가족이 무언가 바꾸면 알려드릴게요.');
+}
+
+function showNotice(title, body){
+  if (notifyState() !== 'granted') return;
+  const opt = { body, icon: './icon-192.png', badge: './icon-192.png', tag: 'lhk-family' };
+  const direct = () => { try{ new Notification(title, opt); }catch(e){} };
+  /* 휴대폰에서는 서비스워커를 거쳐야 알림이 뜬다. 다만 서비스워커가 이 화면을
+     맡고 있을 때만 그렇게 한다 — 등록 전이라면 ready 가 끝나지 않아 알림이 사라진다. */
+  if (navigator.serviceWorker?.controller){
+    navigator.serviceWorker.ready
+      .then(reg => reg.showNotification(title, opt))
+      .catch(direct);
+  } else {
+    direct();
+  }
+}
+
+function notifyChange(spots, by){
+  const who = memberOf(by)?.name;
+  const names = [...new Set(spots.map(spotName).filter(Boolean))];
+  if (!names.length) return;
+  const what = names.length === 1 ? names[0] : `${names[0]} 외 ${names.length - 1}곳`;
+  showNotice(who ? `${withSubject(who)} 바꿨어요` : '가족이 무언가 바꿨어요', what);
+}
+
+function renderNotifyBtn(){
+  const btn = document.getElementById('notifyBtn');
+  if (!btn) return;
+  const st = notifyState();
+  btn.hidden = st === 'unsupported';
+  btn.disabled = st === 'granted';
+  btn.textContent = st === 'granted' ? '🔔 알림 켜짐'
+                  : st === 'denied'  ? '🔕 알림 막힘'
+                  : '🔔 알림 켜기';
+  btn.title = st === 'granted' ? '가족이 무언가 바꾸면 알려드려요'
+            : st === 'denied'  ? '브라우저 설정에서 알림을 허용해 주세요'
+            : '눌러서 알림을 켜세요';
+}
+
 /* ---------- 동기화 계층과의 연결 ---------- */
 const SYNC_LABEL = {
   local:      ['#9ca3af', '이 기기에만 저장'],
@@ -3512,11 +3760,15 @@ function setSyncStatus(state, detail){
 
 window.familyApp = {
   setSyncStatus,
-  /* 원격으로 보낼 전체 스냅샷 */
-  snapshot: () => ({ weekly: data, events, money, moods, says, fit, quiz, notice }),
+  /* 원격으로 보낼 전체 스냅샷. by 는 마지막으로 손댄 사람 —
+     받는 쪽에서 "엄마가 바꿨어요" 라고 알려주기 위해 함께 보낸다. */
+  snapshot: () => ({ weekly: data, events, money, moods, says, fit, quiz, notice,
+                     by: LOCK.who() || '' }),
   /* 원격에서 받은 내용을 로컬에 반영 (되돌려 보내지 않는다) */
   apply(remote){
     if (!remote || typeof remote !== 'object') return;
+    /* 무엇이 달라졌는지 먼저 살펴 두었다가, 반영한 뒤 NEW 표시를 붙인다 */
+    const changed = whatChanged(remote);
     if (remote.weekly) { data   = mergeWeekly(remote.weekly);  put(STORE_KEY,  data); }
     if (remote.events) { events = cleanEvents(remote.events);   put(EVENTS_KEY, events); }
     if (remote.money)  { money  = cleanMoney(remote.money);     put(MONEY_KEY,  money); }
@@ -3528,6 +3780,7 @@ window.familyApp = {
       notice = remote.notice.slice(0, 500);
       try{ localStorage.setItem(NOTICE_KEY, notice); }catch(e){}
     }
+    markNew(changed, remote.by);
     renderAll();
   },
   /* 동기화 계층이 자신의 push 함수를 여기에 등록한다 */
@@ -3537,6 +3790,9 @@ window.familyApp = {
 
 setSyncStatus('local');
 renderWho();
+renderTabDots();
+renderNotifyBtn();
+scheduleSeen(5000);      // 앱을 켤 때는 조금 오래 보여준 뒤 지운다
 renderNotice();
 renderToday();
 renderMonth();
