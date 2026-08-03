@@ -156,6 +156,17 @@ window.LOCK = (function(){
     margin:0; background:var(--bg); color:var(--text);
     font-family:"Pretendard","Apple SD Gothic Neo","Malgun Gothic",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
     -webkit-text-size-adjust:100%;
+    /* 글자를 두 번 누르거나 길게 눌러도 선택되지 않게 한다.
+       선택되면 휴대폰이 아래에 「검색결과를 보려면 탭하세요」를 띄우고,
+       그것을 누르면 아이가 앱 밖(구글)으로 나가 버리기 때문. */
+    -webkit-user-select:none; -moz-user-select:none; user-select:none;
+    -webkit-touch-callout:none;
+    -webkit-tap-highlight-color:transparent;
+  }
+  /* 글자를 넣는 칸에서는 고르기가 되어야 지우고 고칠 수 있다 */
+  input, textarea{
+    -webkit-user-select:text; -moz-user-select:text; user-select:text;
+    -webkit-touch-callout:default;
   }
   /* 화면이 밀려 들어올 때 가로 스크롤바가 잠깐 생기지 않도록 */
   body{overflow-x:hidden}
@@ -389,6 +400,25 @@ window.LOCK = (function(){
   .quiz-box.done b{color:var(--c);font-variant-numeric:tabular-nums}
 
   /* ---- 한자 따라 쓰기 ---- */
+  /* ---- 하고싶은 말 고르기 ---- */
+  #sayDlg{max-width:380px;width:calc(100vw - 32px)}
+  #sayDlg h3{margin:0 0 2px;font-size:17px}
+  .say-picks{display:flex;flex-wrap:wrap;gap:6px;margin:14px 0 4px}
+  .say-pick{
+    font:inherit;font-size:13.5px;font-weight:600;padding:8px 12px;border-radius:99px;
+    border:1px solid var(--line);background:var(--bg);color:var(--text);cursor:pointer;
+    transition:.15s;
+  }
+  .say-pick:hover{border-color:var(--accent)}
+  .say-pick.on{background:var(--accent);border-color:var(--accent);color:#fff}
+  .say-free{display:flex;gap:6px;margin-top:10px}
+  .say-free[hidden]{display:none}
+  .say-free input{
+    flex:1;min-width:0;font:inherit;font-size:14px;padding:9px 11px;border-radius:11px;
+    border:1px solid var(--line);background:var(--bg);color:var(--text);
+  }
+  .say-free input:focus{outline:2px solid var(--accent);outline-offset:-1px;border-color:transparent}
+
   /* ---- 비밀번호 바꾸기 ---- */
   #codeDlg{max-width:340px;width:calc(100vw - 32px)}
   #codeDlg h3{margin:0 0 2px;font-size:17px}
@@ -526,6 +556,16 @@ window.LOCK = (function(){
     border-radius:9px;border:1px solid var(--line);background:var(--bg);color:var(--text);
     resize:none;overflow:auto;
   }
+  /* 아이 카드의 하고싶은 말 — 눌러서 고르는 칸 (자판이 뜨지 않는다) */
+  .say-open{
+    flex:1;min-width:0;font:inherit;font-size:12.5px;line-height:1.35;padding:6px 9px;
+    border-radius:9px;border:1px solid var(--line);background:var(--bg);color:var(--text);
+    text-align:left;cursor:pointer;min-height:38px;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+  }
+  .say-open.blank{color:var(--muted)}
+  .say-open:hover:not([disabled]){border-color:var(--c)}
+  .card:has(.card-bg) .say-open{background:color-mix(in srgb,var(--card) 88%,transparent)}
   .say-input::placeholder{color:var(--muted);opacity:.75}
   .say-input:focus{outline:2px solid var(--c);outline-offset:-1px;border-color:transparent;
     background:var(--card)}
@@ -1048,7 +1088,8 @@ window.LOCK = (function(){
     .q-opt{font-size:14px;padding:9px 10px}
     .say{margin-top:5px;gap:4px;flex:none}
     .say-icon{font-size:10px;line-height:1.5}
-    .say-input{font-size:11px;padding:4px 6px;border-radius:8px;line-height:1.35}
+    .say-input,.say-open{font-size:11px;padding:4px 6px;border-radius:8px;line-height:1.35}
+    .say-open{min-height:30px}
     th:first-child,td:first-child{width:46px;font-size:12px}
     /* 엄마 카드는 항목이 여섯 개라 가장 빡빡하다. 여기에 맞춰 폭을 잡는다 */
     b.lg{display:none}
@@ -1107,7 +1148,8 @@ window.LOCK = (function(){
     .card-badges{min-height:14px}
     .card-badges .chip{font-size:9px;padding:0 3px}
     .say{margin-top:4px}
-    .say-input{font-size:9.5px;padding:2px 5px}
+    .say-input,.say-open{font-size:9.5px;padding:2px 5px}
+    .say-open{min-height:24px}
     .word-box{padding:3px 8px}
     .word-label{font-size:9px;margin-bottom:2px}
     .word-row + .word-row{margin-top:3px;padding-top:3px}
@@ -1159,7 +1201,8 @@ window.LOCK = (function(){
     .quiz-row{margin-top:2px;gap:3px}
     .card-badges{min-height:11px;margin-top:2px;padding-top:2px}
     .say{margin-top:3px}
-    .say-input{font-size:9.5px;padding:2px 4px}
+    .say-input,.say-open{font-size:9.5px;padding:2px 4px}
+    .say-open{min-height:22px}
     .notice{padding:5px 9px;margin-bottom:5px}
   }
 </style>
@@ -1377,6 +1420,21 @@ window.LOCK = (function(){
 
   <div class="row" style="margin-top:14px">
     <button class="btn" onclick="document.getElementById('dayDlg').close()">닫기</button>
+  </div>
+</dialog>
+
+<dialog id="sayDlg">
+  <h3 id="sayTitle"></h3>
+  <div class="dlg-sub">눌러서 고르면 자판 없이 바로 적혀요</div>
+  <div class="say-picks" id="sayPicks"></div>
+  <div class="say-free" id="sayFree" hidden>
+    <input type="text" id="sayText" maxlength="60" placeholder="하고싶은 말을 적어보세요">
+    <button class="btn primary" onclick="saveSayText()">적기</button>
+  </div>
+  <div class="row" style="margin-top:12px">
+    <button class="btn" id="sayClear" onclick="clearSay()">지우기</button>
+    <button class="btn" id="sayFreeBtn" onclick="showSayFree()">✏️ 직접 쓰기</button>
+    <button class="btn" onclick="document.getElementById('sayDlg').close()">닫기</button>
   </div>
 </dialog>
 
@@ -2172,9 +2230,15 @@ function renderToday(){
         </div>
         <label class="say">
           <span class="say-icon">💬</span>
-          <textarea class="say-input" rows="2" maxlength="60" ${ro}
-            placeholder="${mine ? '오늘 하고싶은 말' : ''}"
-            onchange="setSay('${m.key}', this.value)">${esc(todaySays[m.key] || '')}</textarea>
+          ${m.role === 'kid'
+            /* 아이 카드는 눌러서 고르는 방식 — 자판이 뜨지 않아야
+               자판 위 「더보기」로 다른 앱에 가는 길이 열리지 않는다 */
+            ? `<button type="button" class="say-open ${todaySays[m.key] ? '' : 'blank'}" ${ro}
+                 onclick="openSay('${m.key}')">${
+                 esc(todaySays[m.key] || (mine ? '눌러서 고르기' : ''))}</button>`
+            : `<textarea class="say-input" rows="2" maxlength="60" ${ro}
+                 placeholder="${mine ? '오늘 하고싶은 말' : ''}"
+                 onchange="setSay('${m.key}', this.value)">${esc(todaySays[m.key] || '')}</textarea>`}
         </label>
       </div>`;
   }).join('');
@@ -2935,6 +2999,55 @@ function setSay(mKey, value){
   if (text) day[mKey] = text; else delete day[mKey];
   if (!Object.keys(day).length) delete says[key];
   saveSays();
+}
+
+/* ---------- 하고싶은 말 고르기 ----------
+   아이 카드에서는 자판을 띄우지 않고 눌러서 고르게 한다. */
+const SAY_PICKS = [
+  '학교 다녀왔습니다', '학원 다녀올게요', '숙제 다 했어요', '오늘 재밌었어요',
+  '배고파요', '조금 피곤해요', '몸이 안 좋아요', '일찍 자고 싶어요',
+  '친구랑 놀고 왔어요', '칭찬받았어요', '도와주세요', '사랑해요',
+];
+let sayTarget = null;
+
+function openSay(mKey){
+  if (!LOCK.canEdit(mKey)) return;
+  sayTarget = mKey;
+  const m = memberOf(mKey);
+  const now = (says[ymdOf(new Date())] || {})[mKey] || '';
+  document.getElementById('sayTitle').textContent = `${m.name}의 오늘 하고싶은 말`;
+  document.getElementById('sayPicks').innerHTML = SAY_PICKS.map(t =>
+    `<button type="button" class="say-pick ${t === now ? 'on' : ''}"
+       onclick="pickSay(${esc(JSON.stringify(t))})">${esc(t)}</button>`).join('');
+  document.getElementById('sayClear').hidden = !now;
+  document.getElementById('sayFree').hidden = true;
+  document.getElementById('sayFreeBtn').hidden = false;
+  document.getElementById('sayText').value = now;
+  document.getElementById('sayDlg').showModal();
+}
+function pickSay(text){
+  if (!sayTarget) return;
+  setSay(sayTarget, text);
+  renderToday();
+  document.getElementById('sayDlg').close();
+}
+function clearSay(){
+  if (!sayTarget) return;
+  setSay(sayTarget, '');
+  renderToday();
+  document.getElementById('sayDlg').close();
+}
+/* 고를 말이 없으면 직접 쓸 수도 있다 — 이때는 자판이 뜬다 */
+function showSayFree(){
+  document.getElementById('sayFree').hidden = false;
+  document.getElementById('sayFreeBtn').hidden = true;
+  setTimeout(() => document.getElementById('sayText').focus(), 60);
+}
+function saveSayText(){
+  if (!sayTarget) return;
+  setSay(sayTarget, document.getElementById('sayText').value);
+  renderToday();
+  document.getElementById('sayDlg').close();
 }
 
 /* ---------- 기분 고르기 팝업 ---------- */
@@ -4355,6 +4468,22 @@ function doLogout(){
   pickAgain();
   renderAll();
 }
+
+/* ---------- 앱 밖으로 새지 않게 ----------
+   글자를 두 번 누르거나 길게 눌러 고르면, 휴대폰이 「검색결과를 보려면 탭하세요」를
+   띄우고 그것을 누르면 구글로 나가 버린다. 글자 넣는 칸이 아닌 곳에서는
+   고르기와 길게 누르기 메뉴를 아예 막는다. */
+(function keepInside(){
+  const editable = el => !!(el && el.closest && el.closest('input, textarea, [contenteditable]'));
+  document.addEventListener('selectstart', e => { if (!editable(e.target)) e.preventDefault(); });
+  document.addEventListener('contextmenu', e => { if (!editable(e.target)) e.preventDefault(); });
+  /* 혹시 글자가 골라졌다면 바로 풀어 준다 */
+  document.addEventListener('selectionchange', () => {
+    if (editable(document.activeElement)) return;
+    const s = document.getSelection();
+    if (s && !s.isCollapsed) s.removeAllRanges();
+  });
+})();
 
 /* ---------- 비밀번호 바꾸기 ----------
    자기 것만 바꿀 수 있다. 바꾼 값은 이 기기에 바로 적용되고,
