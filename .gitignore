@@ -24,3 +24,10 @@ desktop.ini
 *.log
 npm-debug.log*
 *.tmp
+
+# 가족 사진 — 저장소가 공개라 올리지 않는다.
+# 파일을 이 폴더에 두면 앱이 알아서 찾아 쓰고, 없으면 그냥 넘어간다.
+splash.jpg
+card-*.jpg
+card-*.jpeg
+card-*.png

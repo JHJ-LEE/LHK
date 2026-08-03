@@ -256,6 +256,35 @@ window.LOCK = (function(){
     background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
     padding:16px;box-shadow:var(--shadow);position:relative;overflow:hidden;
   }
+  /* ---- 카드 배경 그림 ----
+     카드 전체에 은은하게 깔아 두고, 글씨가 빽빽한 아래쪽만 조금 더 흐리게 덮는다.
+     시간·시험 칸은 제 배경색이 있어 그림 위에서도 또렷하게 읽힌다. */
+  .card-bg{
+    position:absolute;inset:0;z-index:0;pointer-events:none;
+    background-repeat:no-repeat;
+    opacity:.5;
+    /* 그림 가장자리를 부드럽게 풀어 카드에 녹아들게 한다 */
+    -webkit-mask-image:radial-gradient(115% 82% at 50% 68%, #000 52%, transparent 100%);
+            mask-image:radial-gradient(115% 82% at 50% 68%, #000 52%, transparent 100%);
+  }
+  .card-bg::after{
+    content:'';position:absolute;inset:0;
+    background:linear-gradient(180deg,
+      color-mix(in srgb,var(--card) 30%,transparent) 0%,
+      transparent 26%,
+      transparent 74%,
+      color-mix(in srgb,var(--card) 45%,transparent) 100%);
+  }
+  /* 본문은 그림 위에 놓는다 */
+  .card > *:not(.card-bg){position:relative;z-index:1}
+  /* 그림이 깔린 카드에서는 글씨와 칸을 조금 더 또렷하게 */
+  .card:has(.card-bg) .card-head h3{text-shadow:0 1px 3px var(--card)}
+  .card:has(.card-bg) .time-box,
+  .card:has(.card-bg) .quiz-box{background:color-mix(in srgb,var(--bg) 86%,var(--card))}
+  .card:has(.card-bg) .say-input{background:color-mix(in srgb,var(--card) 88%,transparent)}
+  @media (prefers-color-scheme: dark){
+    .card-bg{opacity:.3}
+  }
   .card::before{content:"";position:absolute;inset:0 auto 0 0;width:4px;background:var(--c)}
   .card-head{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:7px}
   .card h3{margin:0;font-size:17px;display:flex;align-items:center;gap:7px}
@@ -1457,6 +1486,21 @@ const flagsOf = m => (m.flags || [])
   .map(k => PARENT_FLAGS.find(f => f.key === k))
   .filter(Boolean);
 
+/* 카드 배경 그림 — 파일이 있으면 그 사람 카드에 은은하게 깔린다.
+   없으면 조용히 넘어가므로, 넣고 빼는 것만으로 켜고 끌 수 있다. */
+/* 카드는 세로로 길고 그림은 네모나서, 꽉 채우면(cover) 좌우가 심하게 잘린다.
+   그림 전체가 보이도록 넣고, 카드에서 비어 있는 가운데 아래쪽에 앉힌다. */
+const CARD_BG = {
+  jun:   { src:'./card-jun.jpg',   size:'contain', pos:'center 72%' },
+  hajin: { src:'./card-hajin.jpg', size:'contain', pos:'center 72%' },
+};
+const cardBgOk = {};
+for (const [k, o] of Object.entries(CARD_BG)){
+  const img = new Image();
+  img.onload  = () => { cardBgOk[k] = true; if (window.renderToday) renderToday(); };
+  img.src = o.src;                     // 없으면 onload 가 오지 않아 그대로 넘어간다
+}
+
 /* 아이별로 다니는 학원 목록 */
 const KID_ACADEMIES = {
   jun:   ['아이픽', '케니스', '농구'],
@@ -1989,6 +2033,9 @@ function renderToday(){
 
     return `
       <div class="card ${mine ? '' : 'readonly'}" style="--c:${m.color}">
+        ${cardBgOk[m.key] ? `<div class="card-bg" style="background-image:url('${
+          CARD_BG[m.key].src}');background-size:${CARD_BG[m.key].size
+          };background-position:${CARD_BG[m.key].pos}"></div>` : ''}
         <div class="card-head">
           <h3><span class="dot"></span>${m.name}${
             mine ? '' : `<span class="ro-mark" title="${m.name}만 고칠 수 있어요">🔒</span>`}${
