@@ -344,6 +344,17 @@ window.LOCK = (function(){
   .trace-count b{font-size:19px;font-weight:800;color:var(--text)}
   .trace-count b.done{font-size:15px;color:#047857}
   .trace-count.over b{color:#ef4444}
+  /* 오늘 몇 번 썼는지 · 미션 용돈까지 얼마나 남았는지 */
+  .trace-goal{margin-top:6px}
+  .trace-goal[hidden]{display:none}
+  .tg-line{display:flex;align-items:baseline;justify-content:space-between;gap:8px;
+    font-size:12px;color:var(--muted);margin-bottom:4px}
+  .tg-line b{font-size:14px;font-weight:800;color:var(--text);font-variant-numeric:tabular-nums}
+  .tg-got{font-weight:800;color:#047857}
+  .tg-left{white-space:nowrap}
+  .tg-bar{height:6px;border-radius:99px;background:var(--line);overflow:hidden}
+  .tg-bar i{display:block;height:100%;border-radius:99px;background:#10b981;
+    transition:width .35s cubic-bezier(.25,.8,.3,1)}
   .trace-tools{margin-top:8px;flex-wrap:wrap;justify-content:center;gap:6px}
   .trace-tools .btn{font-size:12.5px;padding:7px 10px}
   /* 화면이 짧으면 창 전체를 한 단계 줄인다 */
@@ -711,8 +722,9 @@ window.LOCK = (function(){
   .plan-box.total b{color:var(--c)}
   .plan-hint{margin:9px 0 0;font-size:11.5px;line-height:1.45;color:var(--muted)}
   .plan-hint b{font-weight:800;color:var(--text)}
-  .plan-days{display:flex;flex-wrap:wrap;gap:4px;margin-top:7px}
+  .plan-days{display:flex;flex-wrap:wrap;align-items:center;gap:4px;margin-top:6px}
   .plan-days.empty{font-size:11.5px;color:var(--muted)}
+  .p-icon{font-size:12px;margin-right:2px}
   .p-day{font-size:10.5px;font-weight:700;padding:1px 6px;border-radius:99px;
     background:color-mix(in srgb,#10b981 15%,transparent);color:#047857;
     font-variant-numeric:tabular-nums}
@@ -1272,6 +1284,7 @@ window.LOCK = (function(){
   </div>
   <div class="trace-note" id="traceNote"></div>
   <div class="trace-count" id="traceCount"></div>
+  <div class="trace-goal" id="traceGoal" hidden></div>
   <div class="row trace-tools">
     <button class="btn" id="traceReplay" onclick="replayGuide()">▶ 획순 다시 보기</button>
     <button class="btn" onclick="undoStroke()">↩ 한 획 지우기</button>
@@ -1510,6 +1523,7 @@ const SAYS_KEY   = 'family-says-v1';
 const FIT_KEY    = 'family-fitness-v1';
 const QUIZ_KEY   = 'family-quiz-v1';
 const PLAN_KEY   = 'family-plan-v1';
+const TRACE_KEY  = 'family-trace-v1';
 const WEEKDAYS = ['mon','tue','wed','thu','fri'];
 /* 주간 설정 표에는 평일만 보여준다. 자료 자체는 토·일도 그대로 두어
    주말에 오늘 화면이 깨지지 않게 한다. */
@@ -1576,6 +1590,7 @@ let says = loadSays();
 let fit = loadFit();
 let quiz = loadQuiz();
 let plan = loadPlan();
+let traced = loadTraced();
 let notice = loadNotice();
 
 /* events = { "2026-07-15": [ {id, member, type, memo} ] } */
@@ -1721,6 +1736,27 @@ function loadPlan(){
   catch(e){ return cleanPlan(null); }
 }
 function savePlan(){ put(PLAN_KEY, plan); pushRemote(); }
+
+/* traced = { "2026-08-01": { jun: 7 } } — 그날 한자를 바르게 따라 쓴 횟수 */
+function cleanTraced(raw){
+  const out = {};
+  if (!raw || typeof raw !== 'object') return out;
+  for (const [date, byMember] of Object.entries(raw)){
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !byMember || typeof byMember !== 'object') continue;
+    const day = {};
+    for (const m of MEMBERS){
+      const n = Number(byMember[m.key]);
+      if (Number.isFinite(n) && n > 0) day[m.key] = Math.min(999, Math.floor(n));
+    }
+    if (Object.keys(day).length) out[date] = day;
+  }
+  return out;
+}
+function loadTraced(){
+  try{ return cleanTraced(JSON.parse(localStorage.getItem(TRACE_KEY))); }
+  catch(e){ return {}; }
+}
+function saveTraced(){ put(TRACE_KEY, traced); pushRemote(); }
 
 /* fit = { dad: { height, goalW, weekGoal, w:{날짜:체중}, ex:[{id,date,type,min}] } } */
 function cleanFit(raw){
@@ -2074,7 +2110,7 @@ let traceState = null;   // { list, at, strokes, drawing, phase, anim }
 function openTrace(i){
   const hs = wordsOfDay(HANJA, ymdOf(new Date()), 2);
   traceState = { list: hs, at: Math.max(0, Math.min(hs.length - 1, i | 0)),
-                 strokes: [], drawing: null, phase: 'guide', anim: 0 };
+                 strokes: [], drawing: null, phase: 'guide', anim: 0, counted: false };
   document.getElementById('traceDlg').showModal();
   renderTrace();
   playGuide();
@@ -2186,16 +2222,80 @@ function renderTrace(){
   renderTraceCount();
 }
 
+/* 획을 정말로 밑그림을 따라 그었는지 본다.
+   시작점과 끝점이 그 획의 한가운데 선(median) 양 끝 가까이 있으면 인정한다.
+   획순 자료가 없으면 획수만 보고 넘어간다. */
+function traceLooksRight(){
+  const s = traceState, h = traceChar();
+  if (!s || !h) return false;
+  const need = STROKES[h.c];
+  if (!need || s.strokes.length !== need) return false;
+
+  const d = strokeCache.get(STROKE_ALT[h.c] || h.c);
+  if (!d?.medians?.length) return true;               // 밑그림이 없으면 획수만 본다
+
+  const r = document.getElementById('tracePad').getBoundingClientRect();
+  const k = Math.min(r.width, r.height) / 1024;
+  const ox = (r.width  - 1024 * k) / 2, oy = (r.height - 1024 * k) / 2;
+  const pt = ([x, y]) => ({ x: ox + x * k, y: oy + (1024 - y) * k });
+  const tol = Math.min(r.width, r.height) * 0.3;      // 넉넉하게 봐준다
+  const near = (a, b) => Math.hypot(a.x - b.x, a.y - b.y) <= tol;
+
+  for (let i = 0; i < need; i++){
+    const m = d.medians[i];
+    if (!m || m.length < 2) continue;
+    const mine = s.strokes[i];
+    if (!mine || !mine.length) return false;
+    if (!near(mine[0], pt(m[0]))) return false;
+    if (!near(mine[mine.length - 1], pt(m[m.length - 1]))) return false;
+  }
+  return true;
+}
+
+/* 한 글자를 바르게 다 썼으면 오늘 횟수를 하나 올린다 (한 번 센 것은 다시 안 센다) */
+function countTraceDone(){
+  const s = traceState;
+  const who = LOCK.who();
+  if (!s || !who || s.counted) return;
+  if (!traceLooksRight()) return;
+  s.counted = true;
+  const key = ymdOf(new Date());
+  const day = traced[key] || (traced[key] = {});
+  day[who] = (day[who] || 0) + 1;
+  saveTraced();
+  renderMoney();                    // 미션 용돈에 바로 반영
+  renderTraceCount();
+}
+
 function renderTraceCount(){
   const h = traceChar();
   const total = STROKES[h.c];
   const n = traceState.strokes.length;
   const el = document.getElementById('traceCount');
-  if (!total){ el.textContent = `${n}획 그었어요`; return; }
-  el.innerHTML = n === total
-    ? `<b class="done">${n}획 — 딱 맞아요! 🎉</b>`
+  const me = LOCK.who();
+  const isKid = KIDS.some(k => k.key === me);
+  const done = me ? tracedToday(me) : 0;
+
+  let line = !total ? `${n}획 그었어요`
+    : traceState.counted ? `<b class="done">${n}획 — 잘 썼어요! 🎉</b>`
+    : n === total ? `<b>${n}</b> / ${total}획 · 밑그림을 따라 다시 써 보세요`
     : `<b>${n}</b> / ${total}획` + (n > total ? ' · 너무 많아요' : '');
-  el.classList.toggle('over', n > total);
+  el.innerHTML = line;
+  el.classList.toggle('over', !!total && n > total && !traceState.counted);
+
+  /* 아이에게는 오늘 몇 번 썼는지와 미션 용돈을 함께 보여준다 */
+  const bar = document.getElementById('traceGoal');
+  if (!isKid){ bar.hidden = true; return; }
+  bar.hidden = false;
+  const hit = Math.min(done, TRACE_GOAL);
+  bar.innerHTML = `
+    <div class="tg-line">
+      <span>오늘 연습 <b>${done}</b> / ${TRACE_GOAL}회</span>
+      ${done >= TRACE_GOAL
+        ? `<span class="tg-got">🎉 미션 용돈 ${TRACE_PAY}원</span>`
+        : `<span class="tg-left">${TRACE_GOAL - done}번 더 쓰면 ${TRACE_PAY}원</span>`}
+    </div>
+    <div class="tg-bar"><i style="width:${hit / TRACE_GOAL * 100}%"></i></div>`;
 }
 
 /* 화면 크기에 맞춰 그림판을 다시 잡는다 (선명하게 그리려고 화면 배율만큼 키운다) */
@@ -2260,6 +2360,7 @@ function clearTrace(){
   if (!traceState) return;
   traceState.strokes = [];
   traceState.drawing = null;
+  traceState.counted = false;      // 지우고 다시 쓰면 한 번 더 셀 수 있다
   redrawTrace(); renderTraceCount();
 }
 function nextTrace(){
@@ -2267,6 +2368,7 @@ function nextTrace(){
   traceState.at = (traceState.at + 1) % traceState.list.length;
   traceState.strokes = [];
   traceState.drawing = null;
+  traceState.counted = false;
   renderTrace();
   playGuide();               // 글자가 바뀌면 획순부터 다시 보여준다
 }
@@ -2300,7 +2402,9 @@ function closeTrace(){
     if (!traceState?.drawing) return;
     traceState.strokes.push(traceState.drawing);
     traceState.drawing = null;
-    redrawTrace(); renderTraceCount();
+    redrawTrace();
+    countTraceDone();          // 다 썼으면 오늘 횟수에 더한다
+    renderTraceCount();
   };
   cv.addEventListener('pointerup', end);
   cv.addEventListener('pointercancel', end);
@@ -2404,9 +2508,13 @@ function quizOfDay(dateKey, kind){
 }
 
 /* ---------- 미션 용돈 ----------
-   한자·영어를 둘 다 100점 받은 날마다 1000원. 하루에 한 번만 쌓이고,
-   이번 달 것만 센다 — 달이 바뀌면 저절로 0부터 다시 시작한다. */
-const MISSION_PAY = 1000;
+   ① 한자·영어 시험을 둘 다 100점 받은 날마다 1000원
+   ② 오늘의 한자를 바르게 열 번 따라 쓴 날마다 100원
+   둘 다 하루에 한 번씩만 쌓이고, 이번 달 것만 센다 —
+   달이 바뀌면 따로 손대지 않아도 0부터 다시 시작한다. */
+const MISSION_PAY = 1000;      // 시험 두 과목 100점
+const TRACE_PAY   = 100;       // 따라 쓰기 열 번
+const TRACE_GOAL  = 10;        // 하루 목표 횟수
 
 function missionDays(kidKey, monthPrefix){
   const pre = monthPrefix || ymdOf(new Date()).slice(0, 7);
@@ -2416,8 +2524,20 @@ function missionDays(kidKey, monthPrefix){
     .map(([date]) => date)
     .sort();
 }
+function traceDays(kidKey, monthPrefix){
+  const pre = monthPrefix || ymdOf(new Date()).slice(0, 7);
+  return Object.entries(traced)
+    .filter(([date, byMember]) => date.startsWith(pre) && (byMember?.[kidKey] || 0) >= TRACE_GOAL)
+    .map(([date]) => date)
+    .sort();
+}
 function missionPay(kidKey, monthPrefix){
-  return missionDays(kidKey, monthPrefix).length * MISSION_PAY;
+  return missionDays(kidKey, monthPrefix).length * MISSION_PAY
+       + traceDays(kidKey, monthPrefix).length * TRACE_PAY;
+}
+/* 오늘 몇 번 썼는지 */
+function tracedToday(mKey){
+  return (traced[ymdOf(new Date())] || {})[mKey] || 0;
 }
 
 /* 다음 달 이름 — 12월 다음은 1월 */
@@ -2846,12 +2966,23 @@ const won = n => n.toLocaleString('ko-KR') + '원';
 
 function setKid(k){ curKid = k; renderMoney(); scheduleSeen(); }
 
+/* 미션을 해낸 날들을 작은 딱지로 늘어놓는다 */
+function dayChips(icon, days, emptyText){
+  if (!days.length) return `<div class="plan-days empty">${icon} ${emptyText}</div>`;
+  return `<div class="plan-days"><span class="p-icon">${icon}</span>${days.map(d => {
+    const [, m, dd] = d.split('-');
+    return `<span class="p-day">${+m}/${+dd}</span>`;
+  }).join('')}</div>`;
+}
+
 /* ---------- 다음 달 받을 용돈 ----------
-   기본 용돈은 어른(아빠·엄마)이 정하고, 미션 용돈은 시험 점수에서 저절로 나온다. */
+   기본 용돈은 어른(아빠·엄마)이 정하고, 미션 용돈은 시험 점수와
+   한자 따라 쓰기 횟수에서 저절로 나온다. */
 function renderPlan(kid){
   const base = plan[kid.key].base;
-  const days = missionDays(kid.key);
-  const mission = days.length * MISSION_PAY;
+  const days = missionDays(kid.key);          // 시험 두 과목 100점인 날
+  const tdays = traceDays(kid.key);            // 한자를 열 번 따라 쓴 날
+  const mission = days.length * MISSION_PAY + tdays.length * TRACE_PAY;
   const may = LOCK.isParent();               // 기본 용돈은 어른만 고친다
 
   document.getElementById('planCard').innerHTML = `
@@ -2878,15 +3009,13 @@ function renderPlan(kid){
       </div>
     </div>
     <p class="plan-hint">
-      ${may ? '' : '기본 용돈은 아빠·엄마가 정해요. '}한자·영어 시험을 <b>둘 다 100점</b> 받은 날마다
-      ${MISSION_PAY.toLocaleString('ko-KR')}원 · 하루 한 번 · 달이 바뀌면 다시 0부터
+      ${may ? '' : '기본 용돈은 아빠·엄마가 정해요. '}미션 용돈은
+      한자·영어 시험 <b>둘 다 100점</b> ${MISSION_PAY.toLocaleString('ko-KR')}원,
+      오늘의 한자 <b>${TRACE_GOAL}번 따라 쓰기</b> ${TRACE_PAY}원 ·
+      각각 하루 한 번 · 달이 바뀌면 다시 0부터
     </p>
-    ${days.length
-      ? `<div class="plan-days">${days.map(d => {
-           const [, m, dd] = d.split('-');
-           return `<span class="p-day">${+m}/${+dd}</span>`;
-         }).join('')}</div>`
-      : `<div class="plan-days empty">아직 두 과목 다 100점 받은 날이 없어요</div>`}`;
+    ${dayChips('💯', days, '아직 두 과목 다 100점 받은 날이 없어요')}
+    ${dayChips('✍️', tdays, `아직 한자를 ${TRACE_GOAL}번 따라 쓴 날이 없어요`)}`;
 }
 
 function setPlanBase(raw, el){
@@ -3749,7 +3878,7 @@ function clearMember(mKey){
 
 /* ---------- 백업 / 초기화 ---------- */
 function exportJson(){
-  const payload = { version:9, weekly:data, events, money, moods, says, fit, quiz, plan, notice };
+  const payload = { version:10, weekly:data, events, money, moods, says, fit, quiz, plan, traced, notice };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type:'application/json' });
   const a = document.createElement('a');
   const d = new Date();
@@ -3813,9 +3942,10 @@ function askImport(parsed, fileName){
       fit    = cleanFit(parsed?.fit);
       quiz   = cleanQuiz(parsed?.quiz);
       plan   = cleanPlan(parsed?.plan);
+      traced = cleanTraced(parsed?.traced);
       notice = String(parsed?.notice || '').slice(0, 500);
       save(); saveEvents(); saveMoney(); saveMoods(); saveSays(); saveFit(); saveQuiz();
-      savePlan(); saveNotice();
+      savePlan(); saveTraced(); saveNotice();
       renderWeek(); renderMonth(); renderMoney(); renderFit(); renderNotice(); renderToday();
       dlg.close();
     }catch(e){
@@ -3838,8 +3968,9 @@ function askReset(){
     moods = {};
     says = {};
     quiz = {};
+    traced = {};
     notice = '';
-    save(); saveEvents(); saveMoods(); saveSays(); saveQuiz(); saveNotice();
+    save(); saveEvents(); saveMoods(); saveSays(); saveQuiz(); saveTraced(); saveNotice();
     renderWeek(); renderMonth(); renderNotice(); renderToday();
     dlg.close();
   };
@@ -4202,6 +4333,15 @@ function whatChanged(remote){
     const next = cleanPlan(remote.plan);
     for (const k of KIDS) if (!sameJson(next[k.key], plan[k.key])) spots.add(`money:${k.key}`);
   }
+  if (remote.traced){
+    const next = cleanTraced(remote.traced);
+    /* 따라 쓰기 횟수가 달라지면 미션 용돈도 달라진다 */
+    for (const k of KIDS){
+      const a = Object.fromEntries(Object.entries(next).map(([d, v]) => [d, v[k.key]]).filter(([, v]) => v));
+      const b = Object.fromEntries(Object.entries(traced).map(([d, v]) => [d, v[k.key]]).filter(([, v]) => v));
+      if (!sameJson(a, b)) spots.add(`money:${k.key}`);
+    }
+  }
   if (remote.fit){
     const next = cleanFit(remote.fit);
     for (const m of MEMBERS) if (!sameJson(next[m.key], fit[m.key])) spots.add(`fit:${m.key}`);
@@ -4328,7 +4468,7 @@ window.familyApp = {
   setSyncStatus,
   /* 원격으로 보낼 전체 스냅샷. by 는 마지막으로 손댄 사람 —
      받는 쪽에서 "엄마가 바꿨어요" 라고 알려주기 위해 함께 보낸다. */
-  snapshot: () => ({ weekly: data, events, money, moods, says, fit, quiz, plan, notice,
+  snapshot: () => ({ weekly: data, events, money, moods, says, fit, quiz, plan, traced, notice,
                      by: LOCK.who() || '' }),
   /* 원격에서 받은 내용을 로컬에 반영 (되돌려 보내지 않는다) */
   apply(remote){
@@ -4343,6 +4483,7 @@ window.familyApp = {
     if (remote.fit)    { fit    = cleanFit(remote.fit);         put(FIT_KEY,    fit); }
     if (remote.quiz)   { quiz   = cleanQuiz(remote.quiz);       put(QUIZ_KEY,   quiz); }
     if (remote.plan)   { plan   = cleanPlan(remote.plan);       put(PLAN_KEY,   plan); }
+    if (remote.traced) { traced = cleanTraced(remote.traced);   put(TRACE_KEY,  traced); }
     if (typeof remote.notice === 'string'){
       notice = remote.notice.slice(0, 500);
       try{ localStorage.setItem(NOTICE_KEY, notice); }catch(e){}
