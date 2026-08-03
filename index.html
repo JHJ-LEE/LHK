@@ -355,6 +355,12 @@ window.LOCK = (function(){
   .tg-bar{height:6px;border-radius:99px;background:var(--line);overflow:hidden}
   .tg-bar i{display:block;height:100%;border-radius:99px;background:#10b981;
     transition:width .35s cubic-bezier(.25,.8,.3,1)}
+  .tg-each{display:flex;flex-wrap:wrap;align-items:center;gap:5px;margin-top:5px;
+    font-size:11px;color:var(--muted)}
+  .tg-each span{font-weight:700;color:var(--text);padding:1px 7px;border-radius:99px;
+    background:var(--bg);font-variant-numeric:tabular-nums}
+  .tg-each span.now{outline:1.5px solid var(--accent);outline-offset:-1.5px}
+  .tg-each span.ok{background:color-mix(in srgb,#10b981 16%,transparent);color:#047857}
   .trace-tools{margin-top:8px;flex-wrap:wrap;justify-content:center;gap:6px}
   .trace-tools .btn{font-size:12.5px;padding:7px 10px}
   /* 화면이 짧으면 창 전체를 한 단계 줄인다 */
@@ -1737,7 +1743,8 @@ function loadPlan(){
 }
 function savePlan(){ put(PLAN_KEY, plan); pushRemote(); }
 
-/* traced = { "2026-08-01": { jun: 7 } } — 그날 한자를 바르게 따라 쓴 횟수 */
+/* traced = { "2026-08-01": { jun: { "一": 6, "生": 5 } } }
+   글자마다 바르게 따라 쓴 횟수. 그날 한자 두 자를 모두 써야 1회로 친다. */
 function cleanTraced(raw){
   const out = {};
   if (!raw || typeof raw !== 'object') return out;
@@ -1745,8 +1752,14 @@ function cleanTraced(raw){
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !byMember || typeof byMember !== 'object') continue;
     const day = {};
     for (const m of MEMBERS){
-      const n = Number(byMember[m.key]);
-      if (Number.isFinite(n) && n > 0) day[m.key] = Math.min(999, Math.floor(n));
+      const got = byMember[m.key];
+      if (!got || typeof got !== 'object' || Array.isArray(got)) continue;   // 옛 형태(숫자)는 버린다
+      const one = {};
+      for (const [ch, v] of Object.entries(got)){
+        const n = Number(v);
+        if (/^[一-鿿]$/.test(ch) && Number.isFinite(n) && n > 0) one[ch] = Math.min(999, Math.floor(n));
+      }
+      if (Object.keys(one).length) day[m.key] = one;
     }
     if (Object.keys(day).length) out[date] = day;
   }
@@ -2261,7 +2274,9 @@ function countTraceDone(){
   s.counted = true;
   const key = ymdOf(new Date());
   const day = traced[key] || (traced[key] = {});
-  day[who] = (day[who] || 0) + 1;
+  const mine = day[who] || (day[who] = {});
+  const ch = traceChar().c;
+  mine[ch] = (mine[ch] || 0) + 1;      // 글자마다 따로 센다
   saveTraced();
   renderMoney();                    // 미션 용돈에 바로 반영
   renderTraceCount();
@@ -2283,19 +2298,24 @@ function renderTraceCount(){
   el.innerHTML = line;
   el.classList.toggle('over', !!total && n > total && !traceState.counted);
 
-  /* 아이에게는 오늘 몇 번 썼는지와 미션 용돈을 함께 보여준다 */
+  /* 아이에게는 오늘 몇 회 채웠는지와 미션 용돈을 함께 보여준다.
+     두 글자를 다 써야 1회이므로 글자마다 몇 번 썼는지도 나란히 보여준다. */
   const bar = document.getElementById('traceGoal');
   if (!isKid){ bar.hidden = true; return; }
   bar.hidden = false;
+  const each = tracedCounts(me);
   const hit = Math.min(done, TRACE_GOAL);
   bar.innerHTML = `
     <div class="tg-line">
       <span>오늘 연습 <b>${done}</b> / ${TRACE_GOAL}회</span>
       ${done >= TRACE_GOAL
         ? `<span class="tg-got">🎉 미션 용돈 ${TRACE_PAY}원</span>`
-        : `<span class="tg-left">${TRACE_GOAL - done}번 더 쓰면 ${TRACE_PAY}원</span>`}
+        : `<span class="tg-left">${TRACE_GOAL - done}회 더 하면 ${TRACE_PAY}원</span>`}
     </div>
-    <div class="tg-bar"><i style="width:${hit / TRACE_GOAL * 100}%"></i></div>`;
+    <div class="tg-bar"><i style="width:${hit / TRACE_GOAL * 100}%"></i></div>
+    <div class="tg-each">두 글자를 다 써야 1회 —
+      ${each.map(x => `<span class="${x.n >= TRACE_GOAL ? 'ok' : ''}${
+        x.c === h.c ? ' now' : ''}">${x.c} ${x.n}번</span>`).join('')}</div>`;
 }
 
 /* 화면 크기에 맞춰 그림판을 다시 잡는다 (선명하게 그리려고 화면 배율만큼 키운다) */
@@ -2514,7 +2534,7 @@ function quizOfDay(dateKey, kind){
    달이 바뀌면 따로 손대지 않아도 0부터 다시 시작한다. */
 const MISSION_PAY = 1000;      // 시험 두 과목 100점
 const TRACE_PAY   = 100;       // 따라 쓰기 열 번
-const TRACE_GOAL  = 10;        // 하루 목표 횟수
+const TRACE_GOAL  = 10;        // 하루 목표 횟수 (두 글자를 다 써야 1회)
 
 function missionDays(kidKey, monthPrefix){
   const pre = monthPrefix || ymdOf(new Date()).slice(0, 7);
@@ -2524,20 +2544,30 @@ function missionDays(kidKey, monthPrefix){
     .map(([date]) => date)
     .sort();
 }
+/* 그날 한자 두 자를 각각 몇 번씩 썼는지 */
+function tracedCounts(mKey, dateKey){
+  const date = dateKey || ymdOf(new Date());
+  const got = (traced[date] || {})[mKey] || {};
+  return wordsOfDay(HANJA, date, 2).map(h => ({ c: h.c, n: got[h.c] || 0 }));
+}
+/* 두 글자를 모두 써야 1회 — 적게 쓴 쪽이 그날의 횟수가 된다 */
+function traceRounds(mKey, dateKey){
+  const list = tracedCounts(mKey, dateKey);
+  return list.length ? Math.min(...list.map(x => x.n)) : 0;
+}
 function traceDays(kidKey, monthPrefix){
   const pre = monthPrefix || ymdOf(new Date()).slice(0, 7);
-  return Object.entries(traced)
-    .filter(([date, byMember]) => date.startsWith(pre) && (byMember?.[kidKey] || 0) >= TRACE_GOAL)
-    .map(([date]) => date)
+  return Object.keys(traced)
+    .filter(date => date.startsWith(pre) && traceRounds(kidKey, date) >= TRACE_GOAL)
     .sort();
 }
 function missionPay(kidKey, monthPrefix){
   return missionDays(kidKey, monthPrefix).length * MISSION_PAY
        + traceDays(kidKey, monthPrefix).length * TRACE_PAY;
 }
-/* 오늘 몇 번 썼는지 */
+/* 오늘 몇 회 채웠는지 (두 글자를 다 써야 1회) */
 function tracedToday(mKey){
-  return (traced[ymdOf(new Date())] || {})[mKey] || 0;
+  return traceRounds(mKey);
 }
 
 /* 다음 달 이름 — 12월 다음은 1월 */
@@ -3011,11 +3041,11 @@ function renderPlan(kid){
     <p class="plan-hint">
       ${may ? '' : '기본 용돈은 아빠·엄마가 정해요. '}미션 용돈은
       한자·영어 시험 <b>둘 다 100점</b> ${MISSION_PAY.toLocaleString('ko-KR')}원,
-      오늘의 한자 <b>${TRACE_GOAL}번 따라 쓰기</b> ${TRACE_PAY}원 ·
+      오늘의 한자 <b>두 글자를 ${TRACE_GOAL}번씩 따라 쓰기</b> ${TRACE_PAY}원 ·
       각각 하루 한 번 · 달이 바뀌면 다시 0부터
     </p>
     ${dayChips('💯', days, '아직 두 과목 다 100점 받은 날이 없어요')}
-    ${dayChips('✍️', tdays, `아직 한자를 ${TRACE_GOAL}번 따라 쓴 날이 없어요`)}`;
+    ${dayChips('✍️', tdays, `아직 두 글자를 ${TRACE_GOAL}번씩 다 쓴 날이 없어요`)}`;
 }
 
 function setPlanBase(raw, el){
@@ -4335,12 +4365,11 @@ function whatChanged(remote){
   }
   if (remote.traced){
     const next = cleanTraced(remote.traced);
-    /* 따라 쓰기 횟수가 달라지면 미션 용돈도 달라진다 */
-    for (const k of KIDS){
-      const a = Object.fromEntries(Object.entries(next).map(([d, v]) => [d, v[k.key]]).filter(([, v]) => v));
-      const b = Object.fromEntries(Object.entries(traced).map(([d, v]) => [d, v[k.key]]).filter(([, v]) => v));
-      if (!sameJson(a, b)) spots.add(`money:${k.key}`);
-    }
+    /* 따라 쓴 횟수가 달라지면 미션 용돈도 달라진다 */
+    const only = (src, key) => Object.fromEntries(
+      Object.entries(src).map(([d, v]) => [d, v[key]]).filter(([, v]) => v));
+    for (const k of KIDS)
+      if (!sameJson(only(next, k.key), only(traced, k.key))) spots.add(`money:${k.key}`);
   }
   if (remote.fit){
     const next = cleanFit(remote.fit);
