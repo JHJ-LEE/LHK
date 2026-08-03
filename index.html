@@ -30,9 +30,11 @@ window.LOCK = (function(){
   }
   const KEY = 'family-user-v1';
   const OLD = 'family-unlock-v1';        // 예전에 한 개뿐이던 비밀번호를 쓰던 자리
-  /* 가족마다 비밀번호가 다르다. 변환한 값만 적어 둔다 —
+  const CODE_KEY = 'family-codes-v1';    // 각자 바꾼 비밀번호 (변환값만)
+  const KEYS = ['dad', 'mom', 'jun', 'hajin'];
+  /* 처음 비밀번호. 변환한 값만 적어 둔다 —
      공개 저장소에 비밀번호가 그대로 남지 않도록. */
-  const CODES = {
+  const FIRST = {
     'blxhnu':  'dad',      // 아빠 — 관리자
     '15vugq2': 'mom',      // 엄마
     '14tm58t': 'jun',      // 준
@@ -41,9 +43,32 @@ window.LOCK = (function(){
   /* 어른만 할 수 있는 일 — 공지사항, 아이들 기본 용돈 정하기 */
   const PARENTS = ['dad', 'mom'];
 
+  /* 바꾼 비밀번호 { dad:'변환값' } — 바꾼 사람은 그 값만 통한다 */
+  function readCodes(){
+    try{
+      const raw = JSON.parse(localStorage.getItem(CODE_KEY));
+      if (!raw || typeof raw !== 'object') return {};
+      const out = {};
+      for (const k of KEYS)
+        if (typeof raw[k] === 'string' && /^[0-9a-z]{1,10}$/.test(raw[k])) out[k] = raw[k];
+      return out;
+    }catch(e){ return {}; }
+  }
+  let mine = readCodes();
+  const writeCodes = () => { try{ localStorage.setItem(CODE_KEY, JSON.stringify(mine)); }catch(e){} };
+
+  /* 이 변환값이 누구 것인가 */
+  function owner(code){
+    if (!code) return null;
+    for (const k of KEYS) if (mine[k] === code) return k;      // 바꾼 비밀번호가 먼저
+    const first = FIRST[code];
+    return first && !mine[first] ? first : null;               // 바꿨으면 처음 것은 안 통한다
+  }
+  const codeOf = k => mine[k] || Object.keys(FIRST).find(h => FIRST[h] === k) || null;
+
   let saved = null;
   try { saved = localStorage.getItem(KEY) || localStorage.getItem(OLD); } catch (e) {}
-  let who = CODES[saved] || null;          // 예전 관리자 비밀번호는 아빠와 같아 그대로 이어진다
+  let who = owner(saved);                  // 예전 관리자 비밀번호는 아빠와 같아 그대로 이어진다
 
   const root = document.documentElement;
   function apply(){
@@ -54,12 +79,47 @@ window.LOCK = (function(){
   apply();
 
   return {
-    KEY, OLD, hash,
-    memberOfCode: code => CODES[code] || null,
+    KEY, OLD, CODE_KEY, hash,
+    memberOfCode: owner,
     who:     () => who,
     isAdmin: () => who === 'dad',
+    /* 지금 비밀번호가 맞는지 (바꿀 때 확인용) */
+    checkCode: (k, code) => !!k && codeOf(k) === code,
+    /* 바꾼 사람 목록 — 처음 비밀번호를 쓰는 사람은 빠진다 */
+    changed:  () => ({ ...mine }),
+    /* 비밀번호 바꾸기. 다른 사람 것과 겹치면 거절한다. */
+    setCode(k, code){
+      if (!KEYS.includes(k) || !/^[0-9a-z]{1,10}$/.test(code)) return false;
+      const taken = owner(code);
+      if (taken && taken !== k) return false;
+      mine[k] = code;
+      writeCodes();
+      if (who === k){ try{ localStorage.setItem(KEY, code); }catch(e){} }
+      return true;
+    },
+    /* 처음 비밀번호로 되돌리기 */
+    resetCode(k){
+      if (!KEYS.includes(k)) return false;
+      delete mine[k];
+      writeCodes();
+      if (who === k){ try{ localStorage.setItem(KEY, codeOf(k)); }catch(e){} }
+      return true;
+    },
+    /* 다른 기기에서 바꾼 비밀번호를 받아 둔다 (다음에 열 때부터 적용) */
+    applyCodes(raw){
+      if (!raw || typeof raw !== 'object') return false;
+      const next = {};
+      for (const k of KEYS)
+        if (typeof raw[k] === 'string' && /^[0-9a-z]{1,10}$/.test(raw[k])) next[k] = raw[k];
+      if (JSON.stringify(next) === JSON.stringify(mine)) return false;
+      mine = next;
+      writeCodes();
+      /* 지금 들어와 있는 사람의 비밀번호가 바뀌었다면 저장해 둔 값도 맞춰 둔다 */
+      if (who) { try{ localStorage.setItem(KEY, codeOf(who)); }catch(e){} }
+      return true;
+    },
     login(code){
-      const m = CODES[code];
+      const m = owner(code);
       if (!m) return null;
       who = m;
       try { localStorage.setItem(KEY, code); localStorage.removeItem(OLD); } catch (e) {}
@@ -329,6 +389,21 @@ window.LOCK = (function(){
   .quiz-box.done b{color:var(--c);font-variant-numeric:tabular-nums}
 
   /* ---- 한자 따라 쓰기 ---- */
+  /* ---- 비밀번호 바꾸기 ---- */
+  #codeDlg{max-width:340px;width:calc(100vw - 32px)}
+  #codeDlg h3{margin:0 0 2px;font-size:17px}
+  .code-form{display:flex;flex-direction:column;gap:9px;margin:14px 0 8px}
+  .code-form label{display:block;font-size:12px;color:var(--muted);font-weight:600}
+  .code-form input{
+    display:block;width:100%;margin-top:4px;font:inherit;font-size:20px;font-weight:700;
+    letter-spacing:6px;text-align:center;padding:9px 8px 9px 14px;border-radius:11px;
+    border:1px solid var(--line);background:var(--bg);color:var(--text);
+  }
+  .code-form input:focus{outline:2px solid var(--accent);outline-offset:-1px;border-color:transparent}
+  .code-msg{min-height:20px;font-size:12.5px;color:var(--muted);line-height:1.4}
+  .code-msg.err{color:#ef4444;font-weight:600}
+  .code-msg.ok{color:#047857;font-weight:600}
+
   .trace-dlg{max-width:400px;width:calc(100vw - 24px)}
   .trace-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
   .trace-head h3{margin:0}
@@ -1195,6 +1270,7 @@ window.LOCK = (function(){
     <div class="footer-bar">
       <span class="saved" id="savedMsg">변경하면 자동으로 저장됩니다</span>
       <button class="btn" id="notifyBtn" onclick="askNotify()">🔔 알림 켜기</button>
+      <button class="btn" id="codeBtn" onclick="openCodeChange()">🔑 비밀번호 바꾸기</button>
       <button class="btn" id="logoutBtn" onclick="logout()">로그아웃</button>
       <button class="btn" onclick="exportJson()">백업 파일 저장</button>
       <button class="btn" id="importBtn" title="아빠만 할 수 있어요"
@@ -1301,6 +1377,28 @@ window.LOCK = (function(){
 
   <div class="row" style="margin-top:14px">
     <button class="btn" onclick="document.getElementById('dayDlg').close()">닫기</button>
+  </div>
+</dialog>
+
+<dialog id="codeDlg">
+  <h3 id="codeTitle">비밀번호 바꾸기</h3>
+  <div class="dlg-sub" id="codeWho"></div>
+  <div class="code-form">
+    <label>지금 비밀번호
+      <input type="password" id="codeNow" inputmode="numeric" maxlength="6" autocomplete="off">
+    </label>
+    <label>새 비밀번호 (숫자 6자리)
+      <input type="password" id="codeNew" inputmode="numeric" maxlength="6" autocomplete="off">
+    </label>
+    <label>새 비밀번호 다시
+      <input type="password" id="codeNew2" inputmode="numeric" maxlength="6" autocomplete="off">
+    </label>
+  </div>
+  <div class="code-msg" id="codeMsg"></div>
+  <div class="row">
+    <button class="btn" id="codeReset" onclick="resetMyCode()" hidden>처음 것으로</button>
+    <button class="btn" onclick="document.getElementById('codeDlg').close()">취소</button>
+    <button class="btn primary" onclick="saveMyCode()">바꾸기</button>
   </div>
 </dialog>
 
@@ -1641,6 +1739,7 @@ let fit = loadFit();
 let quiz = loadQuiz();
 let plan = loadPlan();
 let traced = loadTraced();
+let codes = LOCK.changed();          // 각자 바꾼 비밀번호 (변환값만)
 let notice = loadNotice();
 
 /* events = { "2026-07-15": [ {id, member, type, memo} ] } */
@@ -3955,7 +4054,8 @@ function clearMember(mKey){
 
 /* ---------- 백업 / 초기화 ---------- */
 function exportJson(){
-  const payload = { version:10, weekly:data, events, money, moods, says, fit, quiz, plan, traced, notice };
+  const payload = { version:11, weekly:data, events, money, moods, says, fit, quiz, plan, traced,
+                    codes, notice };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type:'application/json' });
   const a = document.createElement('a');
   const d = new Date();
@@ -4020,6 +4120,7 @@ function askImport(parsed, fileName){
       quiz   = cleanQuiz(parsed?.quiz);
       plan   = cleanPlan(parsed?.plan);
       traced = cleanTraced(parsed?.traced);
+      if (parsed?.codes){ LOCK.applyCodes(parsed.codes); codes = LOCK.changed(); }
       notice = String(parsed?.notice || '').slice(0, 500);
       save(); saveEvents(); saveMoney(); saveMoods(); saveSays(); saveFit(); saveQuiz();
       savePlan(); saveTraced(); saveNotice();
@@ -4255,6 +4356,75 @@ function doLogout(){
   renderAll();
 }
 
+/* ---------- 비밀번호 바꾸기 ----------
+   자기 것만 바꿀 수 있다. 바꾼 값은 이 기기에 바로 적용되고,
+   다른 기기에는 동기화를 타고 넘어가 다음에 열 때부터 적용된다. */
+function openCodeChange(){
+  const m = memberOf(LOCK.who());
+  if (!m) return;
+  document.getElementById('codeWho').textContent =
+    `${m.name}의 비밀번호를 바꿉니다 · 숫자 6자리`;
+  for (const id of ['codeNow', 'codeNew', 'codeNew2']) document.getElementById(id).value = '';
+  const msg = document.getElementById('codeMsg');
+  msg.textContent = '';
+  msg.classList.remove('err', 'ok');
+  /* 이미 바꾼 적이 있으면 처음 것으로 되돌릴 수 있다 */
+  document.getElementById('codeReset').hidden = !LOCK.changed()[m.key];
+  document.getElementById('codeDlg').showModal();
+  setTimeout(() => document.getElementById('codeNow').focus(), 60);
+}
+
+function codeSay(text, kind){
+  const msg = document.getElementById('codeMsg');
+  msg.textContent = text;
+  msg.classList.toggle('err', kind === 'err');
+  msg.classList.toggle('ok',  kind === 'ok');
+}
+
+function saveMyCode(){
+  const me = LOCK.who();
+  if (!me) return;
+  const now  = document.getElementById('codeNow').value.replace(/\D/g, '');
+  const nu   = document.getElementById('codeNew').value.replace(/\D/g, '');
+  const nu2  = document.getElementById('codeNew2').value.replace(/\D/g, '');
+
+  if (!LOCK.checkCode(me, LOCK.hash(now))) return codeSay('지금 비밀번호가 맞지 않아요.', 'err');
+  if (nu.length !== 6)        return codeSay('새 비밀번호는 숫자 6자리로 해주세요.', 'err');
+  if (nu !== nu2)             return codeSay('새 비밀번호 두 개가 서로 달라요.', 'err');
+  if (nu === now)             return codeSay('지금 쓰는 것과 같아요. 다른 번호로 해주세요.', 'err');
+
+  if (!LOCK.setCode(me, LOCK.hash(nu)))
+    return codeSay('다른 가족이 쓰는 비밀번호예요. 다른 번호로 해주세요.', 'err');
+
+  pushCodes();
+  codeSay('바뀌었어요. 다음부터 새 비밀번호로 들어오세요.', 'ok');
+  setTimeout(() => document.getElementById('codeDlg').close(), 1100);
+}
+
+function resetMyCode(){
+  const me = LOCK.who();
+  if (!me) return;
+  const now = document.getElementById('codeNow').value.replace(/\D/g, '');
+  if (!LOCK.checkCode(me, LOCK.hash(now)))
+    return codeSay('되돌리려면 지금 비밀번호를 먼저 넣어주세요.', 'err');
+  LOCK.resetCode(me);
+  pushCodes();
+  codeSay('처음 비밀번호로 돌아갔어요.', 'ok');
+  document.getElementById('codeReset').hidden = true;
+  setTimeout(() => document.getElementById('codeDlg').close(), 1100);
+}
+
+/* 바뀐 비밀번호를 다른 기기에도 알린다 */
+function pushCodes(){
+  codes = LOCK.changed();
+  pushRemote();
+}
+
+function renderCodeBtn(){
+  const btn = document.getElementById('codeBtn');
+  if (btn) btn.hidden = !LOCK.who();
+}
+
 function renderLockWho(){
   document.getElementById('lockWho').innerHTML = MEMBERS.map(m =>
     `<button type="button" style="--c:${m.color}" onclick="pickLogin('${m.key}')">
@@ -4300,6 +4470,7 @@ function renderAll(){
   renderWho();
   renderTabDots();
   renderNotifyBtn();
+  renderCodeBtn();
   if (!noticeEditing) renderNotice();   // 입력 중인 공지는 건드리지 않는다
   renderToday(); renderMonth(); renderFit(); renderMoney(); renderWeek();
 }
@@ -4544,8 +4715,8 @@ window.familyApp = {
   setSyncStatus,
   /* 원격으로 보낼 전체 스냅샷. by 는 마지막으로 손댄 사람 —
      받는 쪽에서 "엄마가 바꿨어요" 라고 알려주기 위해 함께 보낸다. */
-  snapshot: () => ({ weekly: data, events, money, moods, says, fit, quiz, plan, traced, notice,
-                     by: LOCK.who() || '' }),
+  snapshot: () => ({ weekly: data, events, money, moods, says, fit, quiz, plan, traced,
+                     codes, notice, by: LOCK.who() || '' }),
   /* 원격에서 받은 내용을 로컬에 반영 (되돌려 보내지 않는다) */
   apply(remote){
     if (!remote || typeof remote !== 'object') return;
@@ -4560,6 +4731,8 @@ window.familyApp = {
     if (remote.quiz)   { quiz   = cleanQuiz(remote.quiz);       put(QUIZ_KEY,   quiz); }
     if (remote.plan)   { plan   = cleanPlan(remote.plan);       put(PLAN_KEY,   plan); }
     if (remote.traced) { traced = cleanTraced(remote.traced);   put(TRACE_KEY,  traced); }
+    /* 다른 기기에서 바꾼 비밀번호 — 다음에 열 때부터 그 값으로 들어온다 */
+    if (remote.codes){ LOCK.applyCodes(remote.codes); codes = LOCK.changed(); }
     if (typeof remote.notice === 'string'){
       notice = remote.notice.slice(0, 500);
       try{ localStorage.setItem(NOTICE_KEY, notice); }catch(e){}
@@ -4576,6 +4749,7 @@ setSyncStatus('local');
 renderWho();
 renderTabDots();
 renderNotifyBtn();
+renderCodeBtn();
 scheduleSeen(5000);      // 앱을 켤 때는 조금 오래 보여준 뒤 지운다
 renderNotice();
 renderToday();
