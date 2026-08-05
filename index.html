@@ -388,9 +388,9 @@ window.LOCK = (function(){
     background:var(--bg);border:1px solid transparent;border-radius:11px;padding:7px 11px;
     transition:.15s;
   }
-  /* 휴대폰에서는 칸이 얇아진다. 손가락이 닿는 자리는 위쪽 빈 공간까지 넓혀
-     실제로 누르기 쉽게 한다 (바로 위는 배지 자리라 눌릴 것이 없다). */
-  .quiz-box::before{content:'';position:absolute;left:0;right:0;top:-8px;bottom:-3px}
+  /* 휴대폰에서는 칸이 얇아진다. 손가락이 닿는 자리는 위쪽 빈 공간까지만 넓힌다 —
+     위는 배지 자리라 눌릴 것이 없지만, 아래는 「하고싶은 말」 칸이라 넓히면 그 터치를 가로챈다. */
+  .quiz-box::before{content:'';position:absolute;left:0;right:0;top:-13px;bottom:0}
   .quiz-box:hover:not([disabled]){border-color:var(--c)}
   .quiz-box:active:not([disabled]){transform:scale(.98)}
   .quiz-box small{display:block;font-size:11px;color:var(--muted);margin-bottom:2px}
@@ -398,6 +398,9 @@ window.LOCK = (function(){
   .quiz-box b{display:block;font-size:17px;font-weight:800;letter-spacing:-.4px;
     color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .quiz-box.done b{color:var(--c);font-variant-numeric:tabular-nums}
+  /* 따라 쓰기를 아직 다 못해 잠긴 시험 — 눌러도 따라 쓰기 창이 열린다 */
+  .quiz-box.locked{background:color-mix(in srgb,var(--bg) 70%,var(--muted))}
+  .quiz-box.locked b{font-size:13px;letter-spacing:-.5px;font-variant-numeric:tabular-nums}
 
   /* ---- 한자 따라 쓰기 ---- */
   /* ---- 하고싶은 말 고르기 ---- */
@@ -1073,6 +1076,7 @@ window.LOCK = (function(){
     .quiz-box small{display:inline;font-size:9.5px;margin-bottom:0}
     .quiz-box small::after{content:''}
     .quiz-box b{display:inline;font-size:13px;letter-spacing:-.4px}
+    .quiz-box.locked b{font-size:11px;letter-spacing:-.6px}
     /* 다음 달 용돈 — 세 칸이 나란히 들어가도록 글자를 줄인다 */
     .plan{padding:11px 12px;margin-top:10px}
     .plan-head{margin-bottom:8px}
@@ -1145,6 +1149,7 @@ window.LOCK = (function(){
     .quiz-box{padding:1px 3px}
     .quiz-box small{font-size:8.5px}
     .quiz-box b{font-size:11.5px}
+    .quiz-box.locked b{font-size:10px}
     .card-badges{min-height:14px}
     .card-badges .chip{font-size:9px;padding:0 3px}
     .say{margin-top:4px}
@@ -1198,6 +1203,7 @@ window.LOCK = (function(){
     .quiz-box{padding:0 3px}
     .quiz-box small{font-size:8px}
     .quiz-box b{font-size:11px}
+    .quiz-box.locked b{font-size:9.5px}
     .quiz-row{margin-top:2px;gap:3px}
     .card-badges{min-height:11px;margin-top:2px;padding-top:2px}
     .say{margin-top:3px}
@@ -2218,15 +2224,23 @@ function renderToday(){
         </div>
         <div class="card-badges">${badges}</div>
         <div class="quiz-row">
-          ${QUIZ_KINDS.map(k => {
-            const sc = quizScore(m.key, k.key, dateKey);
-            return `<button type="button" class="quiz-box ${sc === null ? '' : 'done'}" ${ro}
-              title="${m.name} — ${k.label} 시험${sc === null ? ' 시작' : ' 다시 풀기'}"
-              onclick="openQuiz('${m.key}','${k.key}')">
-              <small>${k.name}</small>
-              <b>${sc === null ? '시작' : sc + '점'}</b>
-            </button>`;
-          }).join('')}
+          ${(() => {
+            /* 아이는 오늘의 한자를 열 번 따라 써야 시험이 열린다 */
+            const opened = canQuiz(m.key);
+            const round = opened ? 0 : traceRounds(m.key);
+            return QUIZ_KINDS.map(k => {
+              const sc = quizScore(m.key, k.key, dateKey);
+              return `<button type="button" class="quiz-box ${
+                !opened ? 'locked' : sc === null ? '' : 'done'}" ${ro}
+                title="${opened
+                  ? `${m.name} — ${k.label} 시험${sc === null ? ' 시작' : ' 다시 풀기'}`
+                  : `한자를 ${TRACE_GOAL}번 따라 쓰면 시험을 볼 수 있어요 (지금 ${round}회)`}"
+                onclick="openQuiz('${m.key}','${k.key}')">
+                <small>${k.name}</small>
+                <b>${!opened ? `🔒${round}/${TRACE_GOAL}` : sc === null ? '시작' : sc + '점'}</b>
+              </button>`;
+            }).join('');
+          })()}
         </div>
         <label class="say">
           <span class="say-icon">💬</span>
@@ -2780,6 +2794,13 @@ function tracedToday(mKey){
   return traceRounds(mKey);
 }
 
+/* 아이는 오늘의 한자를 열 번 따라 써야 시험을 볼 수 있다.
+   어른은 따라 쓰기 미션이 없으므로 그냥 볼 수 있다. */
+function canQuiz(mKey){
+  if (!KIDS.some(k => k.key === mKey)) return true;
+  return traceRounds(mKey) >= TRACE_GOAL;
+}
+
 /* 다음 달 이름 — 12월 다음은 1월 */
 function nextMonthLabel(){
   const d = new Date();
@@ -2798,6 +2819,8 @@ let quizState = null;      // { member, kind, list, at, right, done }
 
 function openQuiz(mKey, kind){
   if (!LOCK.canEdit(mKey)) return;
+  /* 따라 쓰기를 아직 다 못했으면 시험 대신 따라 쓰기 창을 열어 준다 */
+  if (!canQuiz(mKey)){ openTrace(0); return; }
   quizState = {
     member: mKey,
     kind,
