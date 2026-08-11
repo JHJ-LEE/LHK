@@ -1736,6 +1736,31 @@ const FIT_KEY    = 'family-fitness-v1';
 const QUIZ_KEY   = 'family-quiz-v1';
 const PLAN_KEY   = 'family-plan-v1';
 const TRACE_KEY  = 'family-trace-v1';
+const STAMP_KEY  = 'family-stamps-v1';
+
+/* ---------- 언제 손댔는지 (영역별) ----------
+   기기끼리 주고받는 것은 앱 내용 전체 한 덩어리다. 그래서 잠시 소식을 못 받아
+   내용이 뒤처진 기기가 뭔가를 건드리면, 그 기기의 옛 내용이 남의 새 내용을
+   통째로 덮어써 버렸다 (아이가 받은 점수가 얼마 뒤 사라지던 원인).
+   영역마다 마지막으로 손댄 시각을 함께 보내, 더 오래된 것으로는 덮지 않는다. */
+const AREAS = ['weekly','events','money','moods','says','fit','quiz','plan','traced','codes','notice'];
+function loadStamps(){
+  const out = {};
+  try{
+    const raw = JSON.parse(localStorage.getItem(STAMP_KEY));
+    if (raw && typeof raw === 'object')
+      for (const a of AREAS){
+        const n = Number(raw[a]);
+        if (Number.isFinite(n) && n > 0) out[a] = n;
+      }
+  }catch(e){}
+  return out;
+}
+let stamps = loadStamps();
+function touch(area){
+  stamps[area] = Date.now();
+  try{ localStorage.setItem(STAMP_KEY, JSON.stringify(stamps)); }catch(e){}
+}
 const WEEKDAYS = ['mon','tue','wed','thu','fri'];
 /* 주간 설정 표에는 평일만 보여준다. 자료 자체는 토·일도 그대로 두어
    주말에 오늘 화면이 깨지지 않게 한다. */
@@ -1840,7 +1865,7 @@ function loadEvents(){
   try{ return cleanEvents(JSON.parse(localStorage.getItem(EVENTS_KEY))); }
   catch(e){ return {}; }
 }
-function saveEvents(){ put(EVENTS_KEY, events); pushRemote(); }
+function saveEvents(){ put(EVENTS_KEY, events); touch('events'); pushRemote(); }
 
 /* money = { jun:[{id,date,kind,cat,memo,amount}], hajin:[...] } */
 function cleanMoney(raw){
@@ -1866,7 +1891,7 @@ function loadMoney(){
   try{ return cleanMoney(JSON.parse(localStorage.getItem(MONEY_KEY))); }
   catch(e){ return cleanMoney(null); }
 }
-function saveMoney(){ put(MONEY_KEY, money); pushRemote(); }
+function saveMoney(){ put(MONEY_KEY, money); touch('money'); pushRemote(); }
 
 /* moods = { "2026-07-28": { dad:'good', jun:'tired' } } — 날짜별로 남아 매일 새로 시작한다 */
 function cleanMoods(raw){
@@ -1885,7 +1910,7 @@ function loadMoods(){
   try{ return cleanMoods(JSON.parse(localStorage.getItem(MOOD_KEY))); }
   catch(e){ return {}; }
 }
-function saveMoods(){ put(MOOD_KEY, moods); pushRemote(); }
+function saveMoods(){ put(MOOD_KEY, moods); touch('moods'); pushRemote(); }
 
 /* says = { "2026-07-28": { dad: "오늘 하고싶은 말" } } — 기분과 같이 날짜별로 남는다 */
 function cleanSays(raw){
@@ -1906,7 +1931,7 @@ function loadSays(){
   try{ return cleanSays(JSON.parse(localStorage.getItem(SAYS_KEY))); }
   catch(e){ return {}; }
 }
-function saveSays(){ put(SAYS_KEY, says); pushRemote(); }
+function saveSays(){ put(SAYS_KEY, says); touch('says'); pushRemote(); }
 
 /* quiz = { "2026-07-28": { dad: { hanja: 90, eng: 80 } } } — 그날 시험 점수 */
 function cleanQuiz(raw){
@@ -1933,7 +1958,7 @@ function loadQuiz(){
   try{ return cleanQuiz(JSON.parse(localStorage.getItem(QUIZ_KEY))); }
   catch(e){ return {}; }
 }
-function saveQuiz(){ put(QUIZ_KEY, quiz); pushRemote(); }
+function saveQuiz(){ put(QUIZ_KEY, quiz); touch('quiz'); pushRemote(); }
 
 /* plan = { jun: { base: 20000 } } — 다음 달에 줄 기본 용돈 (어른이 정한다) */
 function cleanPlan(raw){
@@ -1948,7 +1973,7 @@ function loadPlan(){
   try{ return cleanPlan(JSON.parse(localStorage.getItem(PLAN_KEY))); }
   catch(e){ return cleanPlan(null); }
 }
-function savePlan(){ put(PLAN_KEY, plan); pushRemote(); }
+function savePlan(){ put(PLAN_KEY, plan); touch('plan'); pushRemote(); }
 
 /* traced = { "2026-08-01": { jun: { "一": 6, "生": 5 } } }
    글자마다 바르게 따라 쓴 횟수. 그날 한자 두 자를 모두 써야 1회로 친다. */
@@ -1976,7 +2001,7 @@ function loadTraced(){
   try{ return cleanTraced(JSON.parse(localStorage.getItem(TRACE_KEY))); }
   catch(e){ return {}; }
 }
-function saveTraced(){ put(TRACE_KEY, traced); pushRemote(); }
+function saveTraced(){ put(TRACE_KEY, traced); touch('traced'); pushRemote(); }
 
 /* fit = { dad: { height, goalW, weekGoal, w:{날짜:체중}, ex:[{id,date,type,min}] } } */
 function cleanFit(raw){
@@ -2030,7 +2055,7 @@ function loadFit(){
   try{ return cleanFit(JSON.parse(localStorage.getItem(FIT_KEY))); }
   catch(e){ return cleanFit(null); }
 }
-function saveFit(){ put(FIT_KEY, fit); pushRemote(); }
+function saveFit(){ put(FIT_KEY, fit); touch('fit'); pushRemote(); }
 
 function loadNotice(){
   try{ return String(localStorage.getItem(NOTICE_KEY) ?? '').slice(0, 500); }
@@ -2040,6 +2065,7 @@ function saveNotice(){
   /* 공지는 문자열 그대로 저장 (JSON.stringify 하지 않는다) */
   try{ localStorage.setItem(NOTICE_KEY, notice); flashSaved(true); }
   catch(e){ storageOk = false; flashSaved(false); }
+  touch('notice');
   pushRemote();
 }
 
@@ -2067,7 +2093,7 @@ function put(key, value){
 let onLocalChange = null;
 function pushRemote(){ if (onLocalChange) onLocalChange(); }
 
-function save(){ put(STORE_KEY, data); pushRemote(); }
+function save(){ put(STORE_KEY, data); touch('weekly'); pushRemote(); }
 
 let savedTimer;
 function flashSaved(ok){
@@ -4256,7 +4282,7 @@ function askImport(parsed, fileName){
       quiz   = cleanQuiz(parsed?.quiz);
       plan   = cleanPlan(parsed?.plan);
       traced = cleanTraced(parsed?.traced);
-      if (parsed?.codes){ LOCK.applyCodes(parsed.codes); codes = LOCK.changed(); }
+      if (parsed?.codes){ LOCK.applyCodes(parsed.codes); codes = LOCK.changed(); touch('codes'); }
       notice = String(parsed?.notice || '').slice(0, 500);
       save(); saveEvents(); saveMoney(); saveMoods(); saveSays(); saveFit(); saveQuiz();
       savePlan(); saveTraced(); saveNotice();
@@ -4569,6 +4595,7 @@ function resetMyCode(){
 /* 바뀐 비밀번호를 다른 기기에도 알린다 */
 function pushCodes(){
   codes = LOCK.changed();
+  touch('codes');
   pushRemote();
 }
 
@@ -4703,14 +4730,16 @@ function sameJson(a, b){
 }
 
 /* 원격 내용과 지금 내용을 견주어 달라진 자리를 모은다 */
-function whatChanged(remote){
+/* take 는 그 영역을 실제로 받아들일지 알려준다 — 물리치는 영역은 NEW 표시도 안 붙인다 */
+function whatChanged(remote, take = () => true){
   const spots = new Set();
   const today = ymdOf(new Date());
+  const has = (area, v) => take(area) && v;
 
-  if (typeof remote.notice === 'string' && remote.notice.slice(0, 500) !== notice)
+  if (take('notice') && typeof remote.notice === 'string' && remote.notice.slice(0, 500) !== notice)
     spots.add('notice');
 
-  if (remote.weekly){
+  if (has('weekly', remote.weekly)){
     const next = mergeWeekly(remote.weekly);
     for (const m of MEMBERS){
       if (sameJson(next[m.key], data[m.key])) continue;
@@ -4720,20 +4749,20 @@ function whatChanged(remote){
       if (!sameJson(next[m.key][dk], data[m.key][dk])) spots.add(`today:${m.key}`);
     }
   }
-  if (remote.events){
+  if (has('events', remote.events)){
     const next = cleanEvents(remote.events);
     for (const date of new Set([...Object.keys(next), ...Object.keys(events)]))
       if (!sameJson(next[date], events[date])) spots.add(`month:${date}`);
   }
-  if (remote.money){
+  if (has('money', remote.money)){
     const next = cleanMoney(remote.money);
     for (const k of KIDS) if (!sameJson(next[k.key], money[k.key])) spots.add(`money:${k.key}`);
   }
-  if (remote.plan){
+  if (has('plan', remote.plan)){
     const next = cleanPlan(remote.plan);
     for (const k of KIDS) if (!sameJson(next[k.key], plan[k.key])) spots.add(`money:${k.key}`);
   }
-  if (remote.traced){
+  if (has('traced', remote.traced)){
     const next = cleanTraced(remote.traced);
     /* 따라 쓴 횟수가 달라지면 미션 용돈도 달라진다 */
     const only = (src, key) => Object.fromEntries(
@@ -4741,14 +4770,14 @@ function whatChanged(remote){
     for (const k of KIDS)
       if (!sameJson(only(next, k.key), only(traced, k.key))) spots.add(`money:${k.key}`);
   }
-  if (remote.fit){
+  if (has('fit', remote.fit)){
     const next = cleanFit(remote.fit);
     for (const m of MEMBERS) if (!sameJson(next[m.key], fit[m.key])) spots.add(`fit:${m.key}`);
   }
   /* 기분·하고싶은 말·시험 점수는 오늘 것만 본다 */
   for (const [key, cur, clean] of [['moods', moods, cleanMoods], ['says', says, cleanSays],
                                    ['quiz', quiz, cleanQuiz]]){
-    if (!remote[key]) continue;
+    if (!has(key, remote[key])) continue;
     const next = clean(remote[key]);
     for (const m of MEMBERS)
       if (!sameJson(next[today]?.[m.key], cur[today]?.[m.key])) spots.add(`today:${m.key}`);
@@ -4868,29 +4897,52 @@ window.familyApp = {
   /* 원격으로 보낼 전체 스냅샷. by 는 마지막으로 손댄 사람 —
      받는 쪽에서 "엄마가 바꿨어요" 라고 알려주기 위해 함께 보낸다. */
   snapshot: () => ({ weekly: data, events, money, moods, says, fit, quiz, plan, traced,
-                     codes, notice, by: LOCK.who() || '' }),
-  /* 원격에서 받은 내용을 로컬에 반영 (되돌려 보내지 않는다) */
+                     codes, notice, stamps, by: LOCK.who() || '' }),
+  /* 원격에서 받은 내용을 로컬에 반영 (되돌려 보내지 않는다).
+     영역마다 손댄 시각을 견주어, 내 것이 더 새것이면 옛 내용으로 덮지 않는다.
+     그런 영역이 하나라도 있으면 true 를 돌려주어 동기화 계층이 되돌려 보내게 한다. */
   apply(remote){
-    if (!remote || typeof remote !== 'object') return;
+    if (!remote || typeof remote !== 'object') return false;
+    const rs = (remote.stamps && typeof remote.stamps === 'object') ? remote.stamps : null;
+    let mineNewer = false;
+    const take = area => {
+      if (!rs) return true;              // 시각을 안 보내는 옛 판 기기 — 예전처럼 받는다
+      const r = Number(rs[area]) || 0, l = Number(stamps[area]) || 0;
+      if (r >= l) return true;
+      mineNewer = true;                  // 내 것이 더 새것 → 물리치고 되돌려 보낸다
+      return false;
+    };
+    const got = {};
+    for (const a of AREAS) got[a] = take(a);
+    /* 받아들인 영역은 상대의 시각을 물려받는다 (없는 것은 적어 두지 않는다) */
+    const keep = a => {
+      if (!rs || !got[a]) return;
+      const n = Number(rs[a]) || 0;
+      if (n > 0) stamps[a] = n;
+    };
+
     /* 무엇이 달라졌는지 먼저 살펴 두었다가, 반영한 뒤 NEW 표시를 붙인다 */
-    const changed = whatChanged(remote);
-    if (remote.weekly) { data   = mergeWeekly(remote.weekly);  put(STORE_KEY,  data); }
-    if (remote.events) { events = cleanEvents(remote.events);   put(EVENTS_KEY, events); }
-    if (remote.money)  { money  = cleanMoney(remote.money);     put(MONEY_KEY,  money); }
-    if (remote.moods)  { moods  = cleanMoods(remote.moods);     put(MOOD_KEY,   moods); }
-    if (remote.says)   { says   = cleanSays(remote.says);       put(SAYS_KEY,   says); }
-    if (remote.fit)    { fit    = cleanFit(remote.fit);         put(FIT_KEY,    fit); }
-    if (remote.quiz)   { quiz   = cleanQuiz(remote.quiz);       put(QUIZ_KEY,   quiz); }
-    if (remote.plan)   { plan   = cleanPlan(remote.plan);       put(PLAN_KEY,   plan); }
-    if (remote.traced) { traced = cleanTraced(remote.traced);   put(TRACE_KEY,  traced); }
+    const changed = whatChanged(remote, a => got[a]);
+    if (got.weekly && remote.weekly) { data   = mergeWeekly(remote.weekly);  put(STORE_KEY,  data);   keep('weekly'); }
+    if (got.events && remote.events) { events = cleanEvents(remote.events);  put(EVENTS_KEY, events); keep('events'); }
+    if (got.money  && remote.money)  { money  = cleanMoney(remote.money);    put(MONEY_KEY,  money);  keep('money'); }
+    if (got.moods  && remote.moods)  { moods  = cleanMoods(remote.moods);    put(MOOD_KEY,   moods);  keep('moods'); }
+    if (got.says   && remote.says)   { says   = cleanSays(remote.says);      put(SAYS_KEY,   says);   keep('says'); }
+    if (got.fit    && remote.fit)    { fit    = cleanFit(remote.fit);        put(FIT_KEY,    fit);    keep('fit'); }
+    if (got.quiz   && remote.quiz)   { quiz   = cleanQuiz(remote.quiz);      put(QUIZ_KEY,   quiz);   keep('quiz'); }
+    if (got.plan   && remote.plan)   { plan   = cleanPlan(remote.plan);      put(PLAN_KEY,   plan);   keep('plan'); }
+    if (got.traced && remote.traced) { traced = cleanTraced(remote.traced);  put(TRACE_KEY,  traced); keep('traced'); }
     /* 다른 기기에서 바꾼 비밀번호 — 다음에 열 때부터 그 값으로 들어온다 */
-    if (remote.codes){ LOCK.applyCodes(remote.codes); codes = LOCK.changed(); }
-    if (typeof remote.notice === 'string'){
+    if (got.codes && remote.codes){ LOCK.applyCodes(remote.codes); codes = LOCK.changed(); keep('codes'); }
+    if (got.notice && typeof remote.notice === 'string'){
       notice = remote.notice.slice(0, 500);
       try{ localStorage.setItem(NOTICE_KEY, notice); }catch(e){}
+      keep('notice');
     }
+    try{ localStorage.setItem(STAMP_KEY, JSON.stringify(stamps)); }catch(e){}
     markNew(changed, remote.by);
     renderAll();
+    return mineNewer;
   },
   /* 동기화 계층이 자신의 push 함수를 여기에 등록한다 */
   set onChange(fn){ onLocalChange = fn; },
@@ -4963,7 +5015,19 @@ if (!cfg.url || !cfg.anonKey){
     function receive(row){
       if (!row || row.writer === ME) return;   // 내가 보낸 것은 무시
       applying = true;
-      try{ app.apply(row.data); } finally { applying = false; }
+      let mineNewer = false;
+      try{ mineNewer = app.apply(row.data); } finally { applying = false; }
+      /* 내가 더 새 내용을 들고 있었다면 서버가 뒤처진 것이니 곧바로 올려 맞춘다 */
+      if (mineNewer){ clearTimeout(timer); timer = setTimeout(push, 300); }
+    }
+
+    /* 서버 내용을 한 번 받아 온다 */
+    async function pull(){
+      try{
+        const { data: r } = await sb
+          .from('family_state').select('data, writer').eq('id', ROW).maybeSingle();
+        if (r) receive(r);
+      }catch(e){}
     }
 
     /* 첫 로드 — 서버에 내용이 있으면 그것을 따르고, 없으면 이 기기 내용으로 시작 */
@@ -4972,7 +5036,9 @@ if (!cfg.url || !cfg.anonKey){
     if (error) throw error;
     if (row){
       applying = true;
-      try{ app.apply(row.data); } finally { applying = false; }
+      let mineNewer = false;
+      try{ mineNewer = app.apply(row.data); } finally { applying = false; }
+      if (mineNewer) await push();
     } else {
       await push();
     }
@@ -4983,10 +5049,16 @@ if (!cfg.url || !cfg.anonKey){
           { event: '*', schema: 'public', table: 'family_state', filter: `id=eq.${ROW}` },
           payload => receive(payload.new))
       .subscribe(status => {
-        if (status === 'SUBSCRIBED')       app.setSyncStatus('live');
+        if (status === 'SUBSCRIBED'){ app.setSyncStatus('live'); pull(); }
         else if (status === 'CHANNEL_ERROR') app.setSyncStatus('error', '실시간 연결 실패');
         else if (status === 'TIMED_OUT')     app.setSyncStatus('error', '연결 시간 초과');
       });
+
+    /* 화면을 다시 켜거나 인터넷이 돌아오면 그동안 놓친 내용을 받아 온다.
+       휴대폰이 잠든 사이 실시간 연결이 끊겨 내용이 뒤처지는 것을 막는다. */
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) pull(); });
+    window.addEventListener('online', pull);
+    window.addEventListener('focus', pull);
 
   }catch(e){
     app.setSyncStatus('error', e.message || String(e));
