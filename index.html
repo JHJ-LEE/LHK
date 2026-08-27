@@ -744,7 +744,13 @@ window.LOCK = (function(){
   .cell.sat .num{color:#3b82f6}
   .cell.sun .num,.cell.holiday .num{color:#ef4444}
   .cell.today{box-shadow:inset 0 0 0 2px var(--accent)}
-  .hol{font-size:10px;color:#ef4444;font-weight:600;margin-top:-2px}
+  /* 날짜와 공휴일 이름을 한 줄에 둔다 — 좁은 화면에서도 줄이 늘지 않게 */
+  .num-row{display:flex;align-items:baseline;gap:4px;min-width:0}
+  .hol{font-size:10px;color:#ef4444;font-weight:600;min-width:0;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .hol .sm{display:none}
+  /* 쉬는 날이 아닌 기념일은 조용하게 */
+  .hol.memo{color:var(--muted);font-weight:500}
   .chip{font-size:11px;font-weight:600;padding:2px 5px;border-radius:5px;line-height:1.5;
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   /* 카드 안의 그날 일정 — 그 사람 색으로 옅게 */
@@ -1116,7 +1122,11 @@ window.LOCK = (function(){
     .mchip{padding:1px 4px;border-radius:5px}
     .mchip b{font-size:9.5px}
     .mchip i{font-size:9px}
-    .hol{display:none}
+    /* 좁으면 줄인 이름으로 — 자리를 덜 먹는다 */
+    .num-row{gap:3px}
+    .hol{font-size:8.5px;font-weight:700}
+    .hol .lg{display:none}
+    .hol .sm{display:inline}
   }
 
   /* 세로가 짧은 휴대폰(주소창·툴바가 있는 브라우저) — 한 단계 더 줄인다.
@@ -1678,11 +1688,78 @@ const DAYS = [
   { key:'sat', name:'토요일', short:'토' },
   { key:'sun', name:'일요일', short:'일' },
 ];
-/* 날짜가 고정된 공휴일만 표시 (설날·추석·부처님오신날은 음력이라 자동 표시되지 않음) */
+/* ---------- 공휴일 ----------
+   설날·추석·부처님오신날은 음력이라 해마다 날짜가 달라지고, 대체공휴일도 붙는다.
+   구글 대한민국 공휴일 달력과 date.nager.at 두 곳을 맞춰 보고 적어 두었다.
+   (제헌절·근로자의날은 쉬는 날이 아니라서 아래 기념일 쪽에 넣었다)
+   ※ 2030년부터는 아래 '해마다 같은 날' 것만 나온다 — 그때 다시 채워 넣으면 된다. */
+const HOLIDAYS_BY_DATE = {
+  /* 2026 */
+  '2026-01-01':'신정',      '2026-02-16':'설날 연휴',  '2026-02-17':'설날',
+  '2026-02-18':'설날 연휴', '2026-03-01':'삼일절',     '2026-03-02':'삼일절 대체',
+  '2026-05-05':'어린이날',  '2026-05-24':'부처님오신날','2026-05-25':'부처님오신날 대체',
+  '2026-06-03':'지방선거일','2026-06-06':'현충일',     '2026-08-15':'광복절',
+  '2026-08-17':'광복절 대체','2026-09-24':'추석 연휴', '2026-09-25':'추석',
+  '2026-09-26':'추석 연휴', '2026-10-03':'개천절',     '2026-10-05':'개천절 대체',
+  '2026-10-09':'한글날',    '2026-12-25':'성탄절',
+  /* 2027 */
+  '2027-01-01':'신정',      '2027-02-06':'설날 연휴',  '2027-02-07':'설날',
+  '2027-02-08':'설날 연휴', '2027-02-09':'설날 대체',  '2027-03-01':'삼일절',
+  '2027-05-05':'어린이날',  '2027-05-13':'부처님오신날','2027-06-06':'현충일',
+  '2027-08-15':'광복절',    '2027-08-16':'광복절 대체','2027-09-14':'추석 연휴',
+  '2027-09-15':'추석',      '2027-09-16':'추석 연휴',  '2027-10-03':'개천절',
+  '2027-10-04':'개천절 대체','2027-10-09':'한글날',    '2027-10-11':'한글날 대체',
+  '2027-12-25':'성탄절',    '2027-12-27':'성탄절 대체',
+  /* 2028 */
+  '2028-01-01':'신정',      '2028-01-26':'설날 연휴',  '2028-01-27':'설날',
+  '2028-01-28':'설날 연휴', '2028-03-01':'삼일절',     '2028-05-02':'부처님오신날',
+  '2028-05-05':'어린이날',  '2028-06-06':'현충일',     '2028-08-15':'광복절',
+  '2028-10-02':'추석 연휴', '2028-10-03':'추석·개천절','2028-10-04':'추석 연휴',
+  '2028-10-09':'한글날',    '2028-12-25':'성탄절',
+  /* 2029 */
+  '2029-01-01':'신정',      '2029-02-12':'설날 연휴',  '2029-02-13':'설날',
+  '2029-02-14':'설날 연휴', '2029-03-01':'삼일절',     '2029-05-05':'어린이날',
+  '2029-05-20':'부처님오신날','2029-05-21':'부처님오신날 대체','2029-06-06':'현충일',
+  '2029-08-15':'광복절',    '2029-09-21':'추석 연휴',  '2029-09-22':'추석',
+  '2029-09-23':'추석 연휴', '2029-09-24':'추석 대체',  '2029-10-03':'개천절',
+  '2029-10-09':'한글날',    '2029-12-25':'성탄절',
+};
+/* 해마다 같은 날인 공휴일 — 위 표에 없는 해는 이것만 나온다 */
 const HOLIDAYS = {
   '01-01':'신정', '03-01':'삼일절', '05-05':'어린이날', '06-06':'현충일',
   '08-15':'광복절', '10-03':'개천절', '10-09':'한글날', '12-25':'성탄절',
 };
+/* 쉬는 날은 아니지만 챙기면 좋은 날 — 회색으로 조용히 보여준다 */
+const MEMO_DAYS = {
+  '04-05':'식목일', '05-01':'근로자의날', '05-08':'어버이날', '05-15':'스승의날',
+  '07-17':'제헌절', '10-01':'국군의날', '12-24':'크리스마스 이브',
+};
+
+/* 좁은 화면에서는 날짜 옆에 짧게 적는다 */
+const HOL_SHORT = {
+  '부처님오신날':'석탄일', '크리스마스 이브':'이브', '지방선거일':'선거일',
+  '근로자의날':'노동절', '추석·개천절':'추석',
+};
+function holShort(name){
+  /* 「설날 연휴」·「광복절 대체」 는 뒤쪽 말만 남긴다 — 앞 칸에 본 이름이 있다 */
+  if (/ 연휴$/.test(name)) return '연휴';
+  if (/ 대체$/.test(name)) return '대체';
+  return HOL_SHORT[name] || name;
+}
+
+/* 그날이 무슨 날인지 — off 가 true 면 빨간날(쉬는 날) */
+function holidayOf(dateKey){
+  const byDate = HOLIDAYS_BY_DATE[dateKey];
+  if (byDate) return { name: byDate, off: true };
+  const md = dateKey.slice(5);
+  /* 음력 공휴일을 적어 둔 해에는 고정 공휴일도 그 표에 들어 있다.
+     표가 없는 해에만 해마다 같은 날 목록을 쓴다. */
+  const year = dateKey.slice(0, 4);
+  const known = HOLIDAYS_BY_DATE[`${year}-01-01`];
+  if (!known && HOLIDAYS[md]) return { name: HOLIDAYS[md], off: true };
+  if (MEMO_DAYS[md]) return { name: MEMO_DAYS[md], off: false };
+  return null;
+}
 /* 용돈기입장 */
 const KIDS = [
   { key:'jun',   name:'준',   emoji:'🐯', color:'var(--jun)'   },
@@ -3163,14 +3240,14 @@ function renderMonth(){
   for (let d = 1; d <= lastDate; d++){
     const key = ymd(y, mo, d);
     const dow = new Date(y, mo, d).getDay();
-    const hol = HOLIDAYS[key.slice(5)];
+    const hol = holidayOf(key);
     const list = [...(events[key] || [])].sort(byTime);
     const shown = list.slice(0, 2);
 
     const cls = ['cell'];
     if (dow === 0) cls.push('sun');
     if (dow === 6) cls.push('sat');
-    if (hol) cls.push('holiday');
+    if (hol?.off) cls.push('holiday');          // 쉬는 날만 빨갛게
     if (key === todayKey) cls.push('today');
     if (hasNew(`month:${key}`)) cls.push('is-new');   // 가족이 새로 넣은 날
 
@@ -3186,8 +3263,11 @@ function renderMonth(){
     }).join('');
 
     html += `<div class="${cls.join(' ')}" onclick="openDay('${key}')">
-        <span class="num">${d}</span>
-        ${hol ? `<span class="hol">${hol}</span>` : ''}
+        <span class="num-row">
+          <span class="num">${d}</span>
+          ${hol ? `<span class="hol ${hol.off ? '' : 'memo'}"
+             ><b class="lg">${hol.name}</b><b class="sm">${holShort(hol.name)}</b></span>` : ''}
+        </span>
         ${chips}
         ${list.length > 2 ? `<span class="more">+${list.length - 2}건</span>` : ''}
       </div>`;
@@ -3210,10 +3290,11 @@ function openDay(key){
   const [y, mo, d] = key.split('-').map(Number);
   const dt = new Date(y, mo - 1, d);
   const di = (dt.getDay() + 6) % 7;
-  const hol = HOLIDAYS[key.slice(5)];
+  const hol = holidayOf(key);
 
   document.getElementById('dayTitle').textContent = `${mo}월 ${d}일 ${DAYS[di].name}`;
-  document.getElementById('dayHoliday').textContent = hol ? `🎌 ${hol}` : '';
+  document.getElementById('dayHoliday').textContent =
+    hol ? `${hol.off ? '🎌' : '📌'} ${hol.name}${hol.off ? ' · 쉬는 날' : ''}` : '';
 
   document.getElementById('dayRegular').innerHTML = MEMBERS.map(m => {
     const s = data[m.key][DAYS[di].key];
