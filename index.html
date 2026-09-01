@@ -879,6 +879,11 @@ window.LOCK = (function(){
   .plan-box input.bad{outline:2px solid #ef4444;outline-offset:2px}
   .plan-box.total{background:color-mix(in srgb,var(--c) 12%,transparent)}
   .plan-box.total b{color:var(--c)}
+  .plan-head h2{flex:1;min-width:0}
+  .plan-head .sum-nav{flex:none}
+  .plan-past{margin:-2px 0 8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .plan-past span{padding:4px 9px;border-radius:8px;font-size:11.5px;
+    font-weight:700;color:var(--muted);background:var(--soft)}
   .plan-hint{margin:9px 0 0;font-size:11.5px;line-height:1.45;color:var(--muted)}
   .plan-hint b{font-weight:800;color:var(--text)}
   .plan-days{display:flex;flex-wrap:wrap;align-items:center;gap:4px;margin-top:6px}
@@ -1102,6 +1107,8 @@ window.LOCK = (function(){
     .plan-box{padding:6px 7px;border-radius:9px}
     .plan-box small{font-size:9.5px;margin-bottom:1px}
     .plan-box b,.plan-box input{font-size:15px;letter-spacing:-.8px}
+    .plan-past{margin-bottom:6px;gap:6px}
+    .plan-past span{font-size:10.5px;padding:3px 7px}
     .plan-hint{font-size:10.5px;margin-top:7px}
     /* 요약이 세 칸이라 좁은 화면에서는 글자를 줄인다 */
     .month-sum{margin-top:10px}
@@ -1667,6 +1674,13 @@ const MOODS = [
 ];
 const moodOf = k => MOODS.find(m => m.key === k);
 
+/* 시험 과목 — 점수를 불러올 때 쓰이므로 반드시 「불러오기」보다 위에 있어야 한다 */
+const QUIZ_KINDS = [
+  { key:'hanja', name:'한자', label:'오늘의 한자 · 8급' },
+  { key:'eng',   name:'영어', label:'오늘의 영어 · 중2' },
+];
+const quizKindOf = k => QUIZ_KINDS.find(x => x.key === k) || QUIZ_KINDS[0];
+
 /* 아빠·엄마 요일별 O/X 항목 */
 const PARENT_FLAGS = [
   { key:'night',     head:'야근', short:'야근', badge:'야근',     icon:'🌙', on:'#6366f1', bg:'#e0e7ff', fg:'#4338ca' },
@@ -1859,6 +1873,14 @@ function touch(area){
   stamps[area] = Date.now();
   try{ localStorage.setItem(STAMP_KEY, JSON.stringify(stamps)); }catch(e){}
 }
+/* 저장해 둔 것을 못 읽었을 때 — 빈 값을 「방금 고친 것」으로 오해하면
+   남의 기기에 있는 멀쩡한 내용까지 지워 버린다. 시각을 지워 두면
+   다음에 소식을 받을 때 남의 것을 그대로 받아 온다. */
+function failLoad(area, e){
+  delete stamps[area];
+  try{ localStorage.setItem(STAMP_KEY, JSON.stringify(stamps)); }catch(_){}
+  try{ console.error(`${area} 를 불러오지 못했습니다`, e); }catch(_){}
+}
 const WEEKDAYS = ['mon','tue','wed','thu','fri'];
 /* 주간 설정 표에는 평일만 보여준다. 자료 자체는 토·일도 그대로 두어
    주말에 오늘 화면이 깨지지 않게 한다. */
@@ -1961,7 +1983,7 @@ function cleanEvents(raw){
 }
 function loadEvents(){
   try{ return cleanEvents(JSON.parse(localStorage.getItem(EVENTS_KEY))); }
-  catch(e){ return {}; }
+  catch(e){ failLoad('events', e); return {}; }
 }
 function saveEvents(){ put(EVENTS_KEY, events); touch('events'); pushRemote(); }
 
@@ -1987,7 +2009,7 @@ function cleanMoney(raw){
 }
 function loadMoney(){
   try{ return cleanMoney(JSON.parse(localStorage.getItem(MONEY_KEY))); }
-  catch(e){ return cleanMoney(null); }
+  catch(e){ failLoad('money', e); return cleanMoney(null); }
 }
 function saveMoney(){ put(MONEY_KEY, money); touch('money'); pushRemote(); }
 
@@ -2006,7 +2028,7 @@ function cleanMoods(raw){
 }
 function loadMoods(){
   try{ return cleanMoods(JSON.parse(localStorage.getItem(MOOD_KEY))); }
-  catch(e){ return {}; }
+  catch(e){ failLoad('moods', e); return {}; }
 }
 function saveMoods(){ put(MOOD_KEY, moods); touch('moods'); pushRemote(); }
 
@@ -2027,7 +2049,7 @@ function cleanSays(raw){
 }
 function loadSays(){
   try{ return cleanSays(JSON.parse(localStorage.getItem(SAYS_KEY))); }
-  catch(e){ return {}; }
+  catch(e){ failLoad('says', e); return {}; }
 }
 function saveSays(){ put(SAYS_KEY, says); touch('says'); pushRemote(); }
 
@@ -2054,7 +2076,7 @@ function cleanQuiz(raw){
 }
 function loadQuiz(){
   try{ return cleanQuiz(JSON.parse(localStorage.getItem(QUIZ_KEY))); }
-  catch(e){ return {}; }
+  catch(e){ failLoad('quiz', e); return {}; }
 }
 function saveQuiz(){ put(QUIZ_KEY, quiz); touch('quiz'); pushRemote(); }
 
@@ -2069,7 +2091,7 @@ function cleanPlan(raw){
 }
 function loadPlan(){
   try{ return cleanPlan(JSON.parse(localStorage.getItem(PLAN_KEY))); }
-  catch(e){ return cleanPlan(null); }
+  catch(e){ failLoad('plan', e); return cleanPlan(null); }
 }
 function savePlan(){ put(PLAN_KEY, plan); touch('plan'); pushRemote(); }
 
@@ -2097,7 +2119,7 @@ function cleanTraced(raw){
 }
 function loadTraced(){
   try{ return cleanTraced(JSON.parse(localStorage.getItem(TRACE_KEY))); }
-  catch(e){ return {}; }
+  catch(e){ failLoad('traced', e); return {}; }
 }
 function saveTraced(){ put(TRACE_KEY, traced); touch('traced'); pushRemote(); }
 
@@ -2151,13 +2173,13 @@ function cleanFit(raw){
 }
 function loadFit(){
   try{ return cleanFit(JSON.parse(localStorage.getItem(FIT_KEY))); }
-  catch(e){ return cleanFit(null); }
+  catch(e){ failLoad('fit', e); return cleanFit(null); }
 }
 function saveFit(){ put(FIT_KEY, fit); touch('fit'); pushRemote(); }
 
 function loadNotice(){
   try{ return String(localStorage.getItem(NOTICE_KEY) ?? '').slice(0, 500); }
-  catch(e){ return ''; }
+  catch(e){ failLoad('notice', e); return ''; }
 }
 function saveNotice(){
   /* 공지는 문자열 그대로 저장 (JSON.stringify 하지 않는다) */
@@ -2786,11 +2808,6 @@ function closeTrace(){
    다시 풀어도 문제와 보기 순서가 그대로다. */
 const QUIZ_N = 10;                     // 한 과목에 열 문제
 const QUIZ_CHOICES = 5;                // 5지선다
-const QUIZ_KINDS = [
-  { key:'hanja', name:'한자', label:'오늘의 한자 · 8급' },
-  { key:'eng',   name:'영어', label:'오늘의 영어 · 중2' },
-];
-const quizKindOf = k => QUIZ_KINDS.find(x => x.key === k) || QUIZ_KINDS[0];
 
 /* 같은 글에서 늘 같은 숫자가 나오는 셈 (FNV-1a → 선형 합동) */
 function quizSeed(text){
@@ -2925,11 +2942,6 @@ function canQuiz(mKey){
   return traceRounds(mKey) >= TRACE_GOAL;
 }
 
-/* 다음 달 이름 — 12월 다음은 1월 */
-function nextMonthLabel(){
-  const d = new Date();
-  return ((d.getMonth() + 1) % 12) + 1;
-}
 
 /* 점수 읽기 — 없으면 null */
 function quizScore(mKey, kind, dateKey){
@@ -3436,17 +3448,28 @@ function dayChips(icon, days, emptyText){
    기본 용돈은 어른(아빠·엄마)이 정하고, 미션 용돈은 시험 점수와
    한자 따라 쓰기 횟수에서 저절로 나온다. */
 function renderPlan(kid){
+  /* 요약과 같은 달을 본다 — 그 달에 쌓은 몫은 다음 달에 받는다 */
+  const earn = moneyMonth || thisMonthKey();
+  const [ey, em] = earn.split('-').map(Number);
+  const pay = new Date(ey, em, 1);            // 받는 달 = 쌓은 달 + 1
+  const now = earn === thisMonthKey();
   const base = plan[kid.key].base;
-  const days = missionDays(kid.key);          // 시험 두 과목 100점인 날
-  const tdays = traceDays(kid.key);            // 한자를 열 번 따라 쓴 날
+  const days = missionDays(kid.key, earn);     // 시험 두 과목 100점인 날
+  const tdays = traceDays(kid.key, earn);      // 한자를 열 번 따라 쓴 날
   const mission = days.length * MISSION_PAY + tdays.length * TRACE_PAY;
-  const may = LOCK.isParent();               // 기본 용돈은 어른만 고친다
+  /* 기본 용돈은 어른만, 그것도 이번 달을 보고 있을 때만 고친다 */
+  const may = LOCK.isParent() && now;
 
   document.getElementById('planCard').innerHTML = `
     <div class="plan-head">
-      <h2>${nextMonthLabel()}월에 받을 용돈</h2>
+      <button type="button" class="sum-nav" title="지난달" onclick="moveMoneyMonth(-1)">◀</button>
+      <h2>${pay.getMonth() + 1}월에 받을 용돈</h2>
+      <button type="button" class="sum-nav" title="다음달" onclick="moveMoneyMonth(1)"
+        ${now ? 'disabled' : ''}>▶</button>
       <span class="plan-who" style="--c:${kid.color}">${kid.emoji} ${kid.name}</span>
     </div>
+    ${now ? '' : `<div class="plan-past"><span>${em}월에 쌓은 몫이에요</span>
+      <button type="button" class="btn sum-now" onclick="moveMoneyMonth(0)">이번 달로</button></div>`}
     <div class="plan-grid">
       <div class="plan-box">
         <small>기본 용돈</small>
@@ -3466,7 +3489,7 @@ function renderPlan(kid){
       </div>
     </div>
     <p class="plan-hint">
-      ${may ? '' : '기본 용돈은 아빠·엄마가 정해요. '}미션 용돈은
+      ${LOCK.isParent() ? '' : '기본 용돈은 아빠·엄마가 정해요. '}미션 용돈은
       한자·영어 시험 <b>둘 다 100점</b> ${MISSION_PAY.toLocaleString('ko-KR')}원,
       오늘의 한자 <b>두 글자를 ${TRACE_GOAL}번씩 따라 쓰기</b> ${TRACE_PAY}원 ·
       각각 하루 한 번 · 달이 바뀌면 다시 0부터
@@ -3477,7 +3500,8 @@ function renderPlan(kid){
 
 function setPlanBase(raw, el){
   const back = () => { el.value = plan[curKid].base.toLocaleString('ko-KR'); };
-  if (!LOCK.isParent()){ back(); return; }
+  /* 어른만, 그리고 이번 달을 보고 있을 때만 고칠 수 있다 */
+  if (!LOCK.isParent() || (moneyMonth && moneyMonth !== thisMonthKey())){ back(); return; }
   /* 20,000 처럼 쉼표를 넣어 쳐도 되고, 20000 이라고 쳐도 된다 */
   const s = String(raw).replace(/[,\s원]/g, '');
   const n = Math.round(Number(s));
