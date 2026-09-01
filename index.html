@@ -908,13 +908,23 @@ window.LOCK = (function(){
   .form-grid #mAmount{text-align:right;font-weight:700;font-variant-numeric:tabular-nums}
   .form-grid button{grid-column:1/-1;padding:11px;font-size:14px}
 
-  .month-sum{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+  /* 달마다 넘겨 보는 요약 */
+  .month-sum{margin-top:14px}
+  .sum-head{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+  .sum-head b{font-size:15px;letter-spacing:-.3px;font-variant-numeric:tabular-nums}
+  .sum-nav{font:inherit;font-size:13px;line-height:1;padding:5px 9px;border-radius:9px;
+    border:1px solid var(--line);background:var(--card);color:var(--text);cursor:pointer}
+  .sum-nav:hover:not([disabled]){border-color:var(--accent)}
+  .sum-nav[disabled]{opacity:.35;cursor:not-allowed}
+  .sum-now{margin-left:auto;font-size:12px;padding:5px 10px}
+  .sum-boxes{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
   .sum-box{background:var(--card);border:1px solid var(--line);border-radius:13px;
     padding:13px 15px;box-shadow:var(--shadow)}
   .sum-box small{display:block;font-size:12px;color:var(--muted);margin-bottom:3px}
   .sum-box b{font-size:18px;font-variant-numeric:tabular-nums}
   .sum-box.in b{color:#10b981}
   .sum-box.out b{color:#ef4444}
+  .sum-box.net b{color:var(--c)}
 
   .ledger{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
     margin-top:14px;box-shadow:var(--shadow);overflow:hidden}
@@ -1093,6 +1103,17 @@ window.LOCK = (function(){
     .plan-box small{font-size:9.5px;margin-bottom:1px}
     .plan-box b,.plan-box input{font-size:15px;letter-spacing:-.8px}
     .plan-hint{font-size:10.5px;margin-top:7px}
+    /* 요약이 세 칸이라 좁은 화면에서는 글자를 줄인다 */
+    .month-sum{margin-top:10px}
+    .sum-head{gap:6px;margin-bottom:6px}
+    .sum-head b{font-size:13.5px}
+    .sum-nav{font-size:12px;padding:4px 7px}
+    .sum-now{font-size:11px;padding:4px 8px}
+    .sum-boxes{gap:6px}
+    .sum-box{padding:8px 9px;border-radius:11px}
+    .sum-box small{font-size:10.5px;margin-bottom:1px}
+    .sum-box b{font-size:14px;letter-spacing:-.5px;display:block;
+      white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .q-ask{font-size:28px}
     .q-ask.hanja{font-size:46px}
     .q-opt{font-size:14px;padding:9px 10px}
@@ -3385,6 +3406,23 @@ const won = n => n.toLocaleString('ko-KR') + '원';
 
 function setKid(k){ curKid = k; renderMoney(); scheduleSeen(); }
 
+/* ---------- 용돈: 달 넘기기 ---------- */
+let moneyMonth = null;                       // 'YYYY-MM' — 지금 보고 있는 달
+function thisMonthKey(){
+  const d = new Date();
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}`;
+}
+/* step 이 0 이면 이번 달로 돌아온다 */
+function moveMoneyMonth(step){
+  if (!step){ moneyMonth = thisMonthKey(); renderMoney(); return; }
+  const [y, m] = (moneyMonth || thisMonthKey()).split('-').map(Number);
+  const d = new Date(y, m - 1 + step, 1);
+  const next = `${d.getFullYear()}-${pad2(d.getMonth() + 1)}`;
+  if (next > thisMonthKey()) return;         // 앞으로는 이번 달까지만
+  moneyMonth = next;
+  renderMoney();
+}
+
 /* 미션을 해낸 날들을 작은 딱지로 늘어놓는다 */
 function dayChips(icon, days, emptyText){
   if (!days.length) return `<div class="plan-days empty">${icon} ${emptyText}</div>`;
@@ -3741,25 +3779,37 @@ function renderMoney(){
 
   renderPlan(kid);
 
-  /* 이번 달 요약 */
-  const now = new Date();
-  const prefix = `${now.getFullYear()}-${pad2(now.getMonth() + 1)}`;
-  const mIn  = list.filter(e => e.date.startsWith(prefix) && e.kind === 'in')
-                   .reduce((s, e) => s + e.amount, 0);
-  const mOut = list.filter(e => e.date.startsWith(prefix) && e.kind === 'out')
-                   .reduce((s, e) => s + e.amount, 0);
+  /* 달마다 따로 본다 — 지난달도 화살표로 넘겨서 볼 수 있다 */
+  const prefix = (moneyMonth ||= thisMonthKey());
+  const [my, mm] = prefix.split('-').map(Number);
+  const month = list.filter(e => e.date.startsWith(prefix));
+  const mIn  = month.filter(e => e.kind === 'in').reduce((s, e) => s + e.amount, 0);
+  const mOut = month.filter(e => e.kind === 'out').reduce((s, e) => s + e.amount, 0);
+  const thisM = thisMonthKey();
   document.getElementById('monthSum').innerHTML = `
-    <div class="sum-box in"><small>${now.getMonth() + 1}월에 받은 돈</small><b>+${won(mIn)}</b></div>
-    <div class="sum-box out"><small>${now.getMonth() + 1}월에 쓴 돈</small><b>−${won(mOut)}</b></div>`;
+    <div class="sum-head">
+      <button type="button" class="sum-nav" title="지난달" onclick="moveMoneyMonth(-1)">◀</button>
+      <b>${my}년 ${mm}월</b>
+      <button type="button" class="sum-nav" title="다음달" onclick="moveMoneyMonth(1)"
+        ${prefix >= thisM ? 'disabled' : ''}>▶</button>
+      ${prefix === thisM ? '' :
+        `<button type="button" class="btn sum-now" onclick="moveMoneyMonth(0)">이번 달로</button>`}
+    </div>
+    <div class="sum-boxes">
+      <div class="sum-box in"><small>받은 돈</small><b>+${won(mIn)}</b></div>
+      <div class="sum-box out"><small>쓴 돈</small><b>−${won(mOut)}</b></div>
+      <div class="sum-box net" style="--c:${kid.color}"><small>남은 것</small><b>${won(mIn - mOut)}</b></div>
+    </div>`;
 
-  /* 내역 (날짜별 묶음) */
-  if (!list.length){
-    document.getElementById('ledger').innerHTML =
-      `<div class="led-empty">아직 기록이 없어요 🐷<br>위에서 받은 돈이나 쓴 돈을 적어보세요!</div>`;
+  /* 내역 — 고른 달의 것만 보여준다 */
+  if (!month.length){
+    document.getElementById('ledger').innerHTML = list.length
+      ? `<div class="led-empty">${mm}월에는 기록이 없어요<br>◀ ▶ 로 다른 달을 볼 수 있어요</div>`
+      : `<div class="led-empty">아직 기록이 없어요 🐷<br>위에서 받은 돈이나 쓴 돈을 적어보세요!</div>`;
     return;
   }
   let html = '', lastDate = '';
-  for (const e of list){
+  for (const e of month){
     if (e.date !== lastDate){
       lastDate = e.date;
       const [y, m, d] = e.date.split('-').map(Number);
