@@ -1580,7 +1580,7 @@ window.SUPABASE_CONFIG = {
 <script>
 const MEMBERS = [
   { key:'dad',   name:'아빠',  color:'var(--dad)',   goLabel:'출근', backLabel:'퇴근', role:'parent',
-    flags:['night','breakfast','dinner'] },
+    flags:['night','breakfast','dinner','boxing'] },
   { key:'mom',   name:'엄마',  color:'var(--mom)',   goLabel:'출근', backLabel:'퇴근', role:'parent',
     flags:['night','breakfast','dinner','boxing'] },
   { key:'jun',   name:'준',    color:'var(--jun)',   goLabel:'등교', backLabel:'귀가', role:'kid' },
@@ -1699,7 +1699,7 @@ const PARENT_FLAGS = [
   { key:'dinner',    head:'저녁당번', short:'저녁', badge:'저녁당번', icon:'🍽️', on:'#0d9488', bg:'#ccfbf1', fg:'#0f766e' },
   { key:'boxing',    head:'권투',     short:'권투', badge:'권투',     icon:'🥊', on:'#db2777', bg:'#fce7f3', fg:'#be185d' },
 ];
-/* 항목은 구성원마다 다르다 (권투는 엄마만) */
+/* 항목은 구성원마다 다르다 (아이는 없고, 어른만 O/X 를 쓴다) */
 const flagsOf = m => (m.flags || [])
   .map(k => PARENT_FLAGS.find(f => f.key === k))
   .filter(Boolean);
