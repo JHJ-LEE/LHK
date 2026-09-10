@@ -729,13 +729,16 @@ window.LOCK = (function(){
   .cal-nav{margin-left:auto;display:flex;gap:6px}
   .cal{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
     overflow:hidden;box-shadow:var(--shadow)}
-  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr)}
+  /* minmax(0,1fr) — 내용이 아무리 길어도 일곱 칸을 똑같이 나눈다.
+     그냥 1fr 로 두면 긴 글이 든 칸이 넓어지며 토요일 칸을 밀어냈다. */
+  .cal-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr))}
   .dow{padding:9px 0;text-align:center;font-size:12px;font-weight:700;color:var(--muted);
     border-bottom:1px solid var(--line)}
   .dow.sun{color:#ef4444}
   .dow.sat{color:#3b82f6}
   .cell{min-height:94px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);
-    padding:5px;cursor:pointer;transition:background .12s;display:flex;flex-direction:column;gap:3px}
+    padding:5px;cursor:pointer;transition:background .12s;display:flex;flex-direction:column;gap:3px;
+    min-width:0;overflow:hidden}
   .cell:nth-child(7n){border-right:0}
   .cell:hover{background:color-mix(in srgb,var(--accent) 6%,transparent)}
   .cell.blank{background:var(--bg);cursor:default}
@@ -745,7 +748,7 @@ window.LOCK = (function(){
   .cell.sun .num,.cell.holiday .num{color:#ef4444}
   .cell.today{box-shadow:inset 0 0 0 2px var(--accent)}
   /* 날짜와 공휴일 이름을 한 줄에 둔다 — 좁은 화면에서도 줄이 늘지 않게 */
-  .num-row{display:flex;align-items:baseline;gap:4px;min-width:0}
+  .num-row{display:flex;align-items:baseline;gap:4px;min-width:0;max-width:100%}
   .hol{font-size:10px;color:#ef4444;font-weight:600;min-width:0;
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .hol .sm{display:none}
@@ -757,11 +760,16 @@ window.LOCK = (function(){
   .chip.ev{background:color-mix(in srgb,var(--c) 14%,transparent);color:var(--c)}
   /* 달력 칸의 일정 — 색은 사람, 첫 줄 이름·시간, 둘째 줄 메모 */
   .mchip{display:block;background:color-mix(in srgb,var(--c) 15%,transparent);
-    border-radius:6px;padding:2px 5px;line-height:1.3;overflow:hidden}
-  .mchip b{display:block;font-size:10.5px;font-weight:800;color:var(--c);
-    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .mchip i{display:block;font-size:10px;font-style:normal;font-weight:600;color:var(--c);
-    opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    border-radius:6px;padding:2px 5px;line-height:1.3;overflow:hidden;min-width:0}
+  /* 이름과 시간 — 자리가 모자라면 시간이 아랫줄로 내려간다 (잘리지 않게) */
+  .mchip b{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;
+    font-size:10.5px;font-weight:800;color:var(--c);
+    overflow:hidden;overflow-wrap:anywhere}
+  /* 메모는 잘라내지 않고 줄을 바꿔 보여 준다 — 두 줄까지.
+     띄어쓰기 없는 긴 낱말(영어 등)도 칸 안에서 끊어 준다. */
+  .mchip i{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;
+    font-size:10px;font-style:normal;font-weight:600;color:var(--c);opacity:.85;
+    overflow:hidden;overflow-wrap:anywhere;word-break:break-word}
   .more{font-size:10px;color:var(--muted);padding-left:3px}
   .ev-time{font-variant-numeric:tabular-nums;flex:none}
   .hint{font-size:12px;color:var(--muted);margin-top:10px}
@@ -1149,10 +1157,12 @@ window.LOCK = (function(){
     .cell .chip{font-size:10px;padding:1px 3px}
     .mchip{padding:1px 4px;border-radius:5px}
     .mchip b{font-size:9.5px}
-    .mchip i{font-size:9px}
-    /* 좁으면 줄인 이름으로 — 자리를 덜 먹는다 */
-    .num-row{gap:3px}
-    .hol{font-size:8.5px;font-weight:700}
+    .mchip i{font-size:9px;-webkit-line-clamp:2}
+    /* 좁으면 줄인 이름으로 — 자리를 덜 먹는다.
+       칸이 43~53px 밖에 안 되어 날짜와 한 줄에 못 넣는다. 아랫줄에 둔다.
+       (일정 없는 날은 min-height 안에 들어가므로 달력이 길어지지 않는다) */
+    .num-row{gap:0 3px;flex-wrap:wrap}
+    .hol{flex:0 0 100%;font-size:9px;font-weight:700;line-height:1.25;white-space:normal}
     .hol .lg{display:none}
     .hol .sm{display:inline}
   }
@@ -1215,6 +1225,7 @@ window.LOCK = (function(){
     .plan-box{padding:5px 5px}
     .plan-box small{font-size:9px}
     .plan-box b,.plan-box input{font-size:13px;letter-spacing:-.9px}
+    .hol{font-size:8.5px}
   }
 
   /* 아주 짧은 화면(주소창·툴바가 모두 보이는 소형 기기) — 마지막 단계로 더 줄인다 */
